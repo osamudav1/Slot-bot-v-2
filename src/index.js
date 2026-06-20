@@ -36,6 +36,18 @@ const loadScenes = async (bot) => {
 
 const main = async () => {
   dotenv.config();
+
+  // Health check for Render/Uptime Robot
+  // Start this FIRST so Render detects the port binding immediately
+  const app = express();
+  const PORT = process.env.PORT || 3000;
+  app.get("/", (req, res) => res.status(200).send("OK"));
+  app.get("/health", (req, res) => res.status(200).send("OK"));
+  
+  app.listen(PORT, "0.0.0.0", () => {
+    logger.success(`Health check server is running on port ${PORT}`);
+  });
+
   const bot = new Telegraf(process.env.TELEGRAM_BOT_TOKEN);
 
   bot.use(session());
@@ -55,19 +67,8 @@ const main = async () => {
     logger.success("Telegram bot started");
   });
 
-  // Health check for Uptime Robot
-  const app = express();
-  const PORT = process.env.PORT || 3000;
-  app.get("/health", (req, res) => {
-    res.status(200).send("OK");
-  });
-  app.listen(PORT, () => {
-    logger.success(`Health check server is running on port ${PORT}`);
-  });
-
   process.once("SIGINT", () => bot.stop("SIGINT"));
   process.once("SIGTERM", () => bot.stop("SIGTERM"));
 };
-
 
 main();

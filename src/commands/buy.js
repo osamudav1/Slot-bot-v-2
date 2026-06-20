@@ -3,9 +3,7 @@ const { Composer } = require("telegraf");
 const { isUserHaveThisProduct } = require("../modules/product.module");
 const { increaseBankAmount } = require("../modules/bank.module");
 const { getUser, setUser } = require("../modules/user.module");
-const database = require("../database/index.js");
-const productEntity = require("../database/entity/product.entity.js");
-const productRepository = database.getRepository(productEntity);
+const Product = require("../database/entity/product.entity.js");
 const products = require("../products.js");
 const logger = require("../logger");
 
@@ -30,12 +28,12 @@ module.exports = Composer.command(getCommandName("buy"), async (ctx) => {
 
     user.balance = user?.balance - selectedProduct?.price;
 
-    const productItem = {
+    const productItem = new Product({
       product: selectedProduct.code,
       user: user.id,
-    };
+    });
 
-    await productRepository.save(productItem);
+    await productItem.save();
     await setUser({ user });
     return ctx.reply(getString("BUY_PRODUCT_SUCCESS"));
   } catch (err) {

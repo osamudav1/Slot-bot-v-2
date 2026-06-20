@@ -1,12 +1,16 @@
-const typeorm = require("typeorm");
+const mongoose = require("mongoose");
+require("dotenv").config();
 
-const dataSource = new typeorm.DataSource({
-  type: "sqlite",
-  database: "data.sqlite",
-  synchronize: true,
-  entities: [require("./entity/user.entitiy"), require("./entity/product.entity"), require("./entity/coupon.entity")],
-});
+const connectDB = async () => {
+  try {
+    const conn = await mongoose.connect(process.env.MONGODB_URI);
+    console.log(`MongoDB Connected: ${conn.connection.host}`);
+  } catch (error) {
+    console.error(`Error: ${error.message}`);
+    process.exit(1);
+  }
+};
 
-dataSource.initialize();
+connectDB();
 
-module.exports = dataSource;
+module.exports = mongoose;

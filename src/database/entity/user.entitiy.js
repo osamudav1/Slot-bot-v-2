@@ -1,24 +1,23 @@
-var EntitySchema = require("typeorm").EntitySchema;
+const mongoose = require("mongoose");
 
-module.exports = new EntitySchema({
-  name: "User",
-  tableName: "users",
-  columns: {
-    id: {
-      primary: true,
-      type: "int",
-    },
-    balance: {
-      default: 0,
-      type: "int",
-    },
-    last_payback_time: {
-      default: 0,
-      type: "int",
-    },
-    case: {
-      default: false,
-      type: "boolean",
-    },
+const userSchema = new mongoose.Schema({
+  id: {
+    type: Number,
+    required: true,
+    unique: true,
+  },
+  balance: {
+    type: Number,
+    default: 0,
+  },
+  last_payback_time: {
+    type: Number,
+    default: 0,
+  },
+  case: {
+    type: Boolean,
+    default: false,
   },
 });
+
+module.exports = mongoose.model("User", userSchema);

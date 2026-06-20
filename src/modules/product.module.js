@@ -1,19 +1,12 @@
-const database = require("../database/index");
-const productEntity = require("../database/entity/product.entity");
-const productRepository = database.getRepository(productEntity);
+const Product = require("../database/entity/product.entity");
 
 const isUserHaveThisProduct = async ({ id, productName }) => {
-  const userProducts = await getUserProduct({ id: id });
-  return userProducts.filter((el) => el.product == productName).length >= 1;
+  const product = await Product.findOne({ user: id, product: productName });
+  return !!product;
 };
 
 const getUserProduct = async ({ id }) => {
-  const product = await productRepository.find({
-    where: {
-      user: id,
-    },
-  });
-  return product ? product : [];
+  return await Product.find({ user: id });
 };
 
 module.exports = { isUserHaveThisProduct, getUserProduct };

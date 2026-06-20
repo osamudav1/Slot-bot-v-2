@@ -1,18 +1,14 @@
-var EntitySchema = require("typeorm").EntitySchema;
+const mongoose = require("mongoose");
 
-module.exports = new EntitySchema({
-  name: "Product",
-  tableName: "products",
-  columns: {
-    id: {
-      primary: true,
-      type: "int",
-    },
-    product: {
-      type: "varchar",
-    },
-    user: {
-      type: "int",
-    },
+const productSchema = new mongoose.Schema({
+  product: {
+    type: String,
+    required: true,
+  },
+  user: {
+    type: Number,
+    required: true,
   },
 });
+
+module.exports = mongoose.model("Product", productSchema);

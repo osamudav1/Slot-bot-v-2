@@ -1,27 +1,45 @@
-const database = require("../database/index");
-const userEntity = require("../database/entity/user.entitiy");
-const userRepository = database.getRepository(userEntity);
+const User = require("../database/entity/user.entitiy");
 
 const getUser = async ({ id }) => {
-  const user = await userRepository.findOneBy({ id });
+  let user = await User.findOne({ id });
 
   if (!user) {
-    const newUser = {
+    user = new User({
       id: id,
       balance: 0,
-    };
-    await setUser({ user: newUser });
+    });
+    await user.save();
   }
 
   return user;
 };
 
 const findUser = async (options) => {
-  return await userRepository.find(options);
+  // Map TypeORM style options to Mongoose if needed, 
+  // but for ranking.js it passes { order: { balance: 'DESC' }, take: 10 }
+  let query = User.find();
+  
+  if (options.order) {
+    const sort = {};
+    for (const key in options.order) {
+      sort[key] = options.order[key].toLowerCase() === 'desc' ? -1 : 1;
+    }
+    query = query.sort(sort);
+  }
+  
+  if (options.take) {
+    query = query.limit(options.take);
+  }
+
+  return await query.exec();
 };
 
 const setUser = async ({ user }) => {
-  await userRepository.save(user);
+  if (user.save) {
+    await user.save();
+  } else {
+    await User.findOneAndUpdate({ id: user.id }, user, { upsert: true });
+  }
 };
 
 module.exports = { getUser, setUser, findUser };

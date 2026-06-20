@@ -4,6 +4,7 @@ const dotenv = require("dotenv");
 const fs = require("fs");
 const express = require("express");
 const { connectDB } = require("./database/index");
+const { getCommandName } = require("./lang/index");
 const handleUrl = require("./handlers/handle.link");
 const handleBadWords = require("./handlers/handle.badword");
 const handlePhoto = require("./handlers/handle.photo");
@@ -35,6 +36,25 @@ const loadScenes = async (bot) => {
   logger.info(`All scenes loaded`);
 };
 
+const setBotCommands = async (bot) => {
+  const commands = [
+    { command: "start", description: "Start the bot" },
+    { command: getCommandName("bank"), description: "Check your balance" },
+    { command: getCommandName("salary"), description: "Get your salary" },
+    { command: getCommandName("slot"), description: "Play slot machine" },
+    { command: getCommandName("market"), description: "View market items" },
+    { command: getCommandName("buy"), description: "Buy an item (e.g., /buy 1)" },
+    { command: getCommandName("items"), description: "View your items" },
+    { command: getCommandName("sendmoney"), description: "Send money (Reply to user)" },
+    { command: getCommandName("ranking"), description: "View top players" },
+    { command: getCommandName("centralbank"), description: "View central bank" },
+    { command: getCommandName("case"), description: "Open a crate" },
+    { command: getCommandName("add"), description: "Add/Remove balance (Owner only)" },
+  ];
+  await bot.telegram.setMyCommands(commands);
+  logger.success("Bot commands menu updated");
+};
+
 const main = async () => {
   dotenv.config();
 
@@ -59,6 +79,7 @@ const main = async () => {
 
     await loadScenes(bot);
     await loadCommands(bot);
+    await setBotCommands(bot);
 
     bot.on("message", async (ctx) => {
       await handleCaseEvent(ctx);
@@ -83,9 +104,6 @@ const main = async () => {
 
   } catch (error) {
     logger.error(`Failed to start application: ${error.message}`);
-    // Keep the health check server running even if DB fails, 
-    // so Render doesn't keep restarting the container immediately
-    // but the bot won't start.
   }
 };
 

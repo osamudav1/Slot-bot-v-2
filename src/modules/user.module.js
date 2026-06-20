@@ -1,22 +1,18 @@
 const User = require("../database/entity/user.entitiy");
 
 const getUser = async ({ id }) => {
-  let user = await User.findOne({ id });
-
-  if (!user) {
-    user = new User({
-      id: id,
-      balance: 0,
-    });
-    await user.save();
-  }
+  // Use findOneAndUpdate with upsert: true to atomically find or create the user
+  // This prevents race conditions where two messages from the same user arrive at the same time
+  let user = await User.findOneAndUpdate(
+    { id },
+    { $setOnInsert: { id: id, balance: 0 } },
+    { upsert: true, new: true, setDefaultsOnInsert: true }
+  );
 
   return user;
 };
 
 const findUser = async (options) => {
-  // Map TypeORM style options to Mongoose if needed, 
-  // but for ranking.js it passes { order: { balance: 'DESC' }, take: 10 }
   let query = User.find();
   
   if (options.order) {

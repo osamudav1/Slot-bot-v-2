@@ -1,0 +1,26 @@
+{
+  "name": "advanced-telegram-economy",
+  "license": "MIT",
+  "author": "Halit Sever <halitsever@proton.me>",
+  "scripts": {
+    "start": "node src/index.js",
+    "dev": "nodemon src/index.js",
+    "prettier": "prettier --write .",
+    "docs:dev": "vitepress dev docs",
+    "docs:build": "vitepress build docs",
+    "docs:preview": "vitepress preview docs"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.5",
+    "express": "^5.2.1",
+    "logmoji": "^1.0.4",
+    "nodemon": "^3.1.0",
+    "sqlite3": "^5.1.7",
+    "telegraf": "^4.16.3",
+    "typeorm": "^0.3.20"
+  },
+  "devDependencies": {
+    "prettier": "^3.2.5",
+    "vitepress": "^1.1.0"
+  }
+}

@@ -1,0 +1,73 @@
+const { Telegraf, Composer, session, Scenes } = require("telegraf");
+const logger = require("./logger");
+const dotenv = require("dotenv");
+const fs = require("fs");
+const express = require("express");
+const handleUrl = require("./handlers/handle.link");
+const handleBadWords = require("./handlers/handle.badword");
+const handlePhoto = require("./handlers/handle.photo");
+const handleSticker = require("./handlers/handle.sticker");
+const handleCaseEvent = require("./handlers/handle.case");
+
+const loadCommands = async (bot) => {
+  logger.info(`Commands loading...`);
+  const commandsList = fs.readdirSync(__dirname + "/commands");
+  const commands = [];
+  for (const command of commandsList) {
+    commands.push(require(`./commands/${command}`));
+    logger.success(`${command} command loaded`);
+  }
+  bot.use(Composer.compose(commands));
+  logger.info(`All commands loaded`);
+};
+
+const loadScenes = async (bot) => {
+  logger.info(`Scenes loading...`);
+  const scenesList = fs.readdirSync(__dirname + "/scenes");
+  const scenes = [];
+  for (const scene of scenesList) {
+    scenes.push(require(`./scenes/${scene}`));
+    logger.success(`${scene} scene loaded`);
+  }
+  const stage = new Scenes.Stage(scenes);
+  bot.use(stage.middleware());
+  logger.info(`All scenes loaded`);
+};
+
+const main = async () => {
+  dotenv.config();
+  const bot = new Telegraf(process.env.TELEGRAM_BOT_TOKEN);
+
+  bot.use(session());
+
+  await loadScenes(bot);
+  await loadCommands(bot);
+
+  bot.on("message", async (ctx) => {
+    await handleCaseEvent(ctx);
+    await handleSticker(ctx);
+    await handlePhoto(ctx);
+    await handleUrl(ctx);
+    await handleBadWords(ctx);
+  });
+
+  await bot.launch(() => {
+    logger.success("Telegram bot started");
+  });
+
+  // Health check for Uptime Robot
+  const app = express();
+  const PORT = process.env.PORT || 3000;
+  app.get("/health", (req, res) => {
+    res.status(200).send("OK");
+  });
+  app.listen(PORT, () => {
+    logger.success(`Health check server is running on port ${PORT}`);
+  });
+
+  process.once("SIGINT", () => bot.stop("SIGINT"));
+  process.once("SIGTERM", () => bot.stop("SIGTERM"));
+};
+
+
+main();

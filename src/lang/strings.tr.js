@@ -18,6 +18,7 @@ module.exports = {
   SALARY_ERROR: `📊 Maaşınız zaten banka hesabınıza yatırıldı. Her 1 saatte bir kez çekebilirsiniz!`,
   NO_BALANCE: `🔴 Yeteri kadar bakiyeniz yok. /banka yazarak kontrol edebilirsiniz.`,
   BUY_PRODUCT_SUCCESS: "📈 Ürünü başarıyla satın aldınız.",
+  INVALID_PRODUCT_ID: "🔴 Girdiğiniz ürün idsi geçerli değil!",
   CLICK_TO_SEE_PROFILE: "Profili görüntülemek için tıkla",
   CASE_NOT_FOUND: "🔴 Herhangi bir kasaya sahip değilsin.",
   CASE_OPEN: `📦 Bugün şanslı günün! ${escapeCharacter} 💰 Kasadan çıkan para:`,

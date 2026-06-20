@@ -18,6 +18,7 @@ module.exports = {
   SALARY_ERROR: `📊 Your salary has already been deposited into your bank account. You can withdraw it once every hour!`,
   NO_BALANCE: `🔴 You don't have enough balance. You can check by typing /bank.`,
   BUY_PRODUCT_SUCCESS: "📈 You have successfully purchased the product.",
+  INVALID_PRODUCT_ID: "🔴 The product ID you entered is not valid!",
   CLICK_TO_SEE_PROFILE: "Click to view Profile",
   CASE_NOT_FOUND: "🔴 You don't have any crates.",
   CASE_OPEN: `📦 Today is your lucky day!${escapeCharacter}💰 Money from the crate:`,

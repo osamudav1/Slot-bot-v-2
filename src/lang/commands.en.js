@@ -9,6 +9,7 @@ const commands = {
   ranking: "ranking",
   sendmoney: "sendmoney",
   slot: "slot",
+  add: "add",
 };
 
 module.exports = commands;

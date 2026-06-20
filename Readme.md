@@ -38,13 +38,13 @@ npm install
 Run with dev mode:
 
 ```bash
-TELEGRAM_BOT_TOKEN=... MONGODB_URI=... LANG=<en|tr> npm run dev
+TELEGRAM_BOT_TOKEN=... MONGODB_URI=... LANG=<en|tr> OWNER_ID=<your_telegram_id> npm run dev
 ```
 
 Run with production mode:
 
 ```bash
-TELEGRAM_BOT_TOKEN=... MONGODB_URI=... LANG=<en|tr> npm run start
+TELEGRAM_BOT_TOKEN=... MONGODB_URI=... LANG=<en|tr> OWNER_ID=<your_telegram_id> npm run start
 ```
 
 <a align="center" href="https://github.com/halitsever/advanced-telegram-economy/issues">

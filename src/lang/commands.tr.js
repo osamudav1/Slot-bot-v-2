@@ -9,6 +9,7 @@ const commands = {
   ranking: "enzengin",
   sendmoney: "paragonder",
   slot: "slot",
+  add: "ekle",
 };
 
 module.exports = commands;

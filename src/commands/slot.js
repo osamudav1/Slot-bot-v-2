@@ -1,7 +1,6 @@
 const { Composer } = require("telegraf");
 const { increaseBankAmount } = require("../modules/bank.module");
 const { getString, getCommandName } = require("../lang/index");
-const { getUser } = require("../modules/user.module");
 const User = require("../database/entity/user.entitiy");
 const logger = require("../logger");
 
@@ -25,25 +24,35 @@ const slotHandler = async (ctx) => {
       return ctx.reply(getString("NO_BALANCE"));
     }
 
-    let slots = ["🍎", "🍌", "🍊", "🍐", "🍒"];
-    let result1 = Math.floor(Math.random() * slots.length);
-    let result2 = Math.floor(Math.random() * slots.length);
-    let result3 = Math.floor(Math.random() * slots.length);
+    let slots = ["🍎", "🍌", "🍊", "🍐", "🍒", "🍉"];
+    
+    const getDesign = (s1, s2, s3, bet = "", win = "", profit = "") => {
+        return `🎰 GUESS SLOT V1.0\n✦ ━━━━━━━━━━━ ✦\n\n┏━━━━━━━━━━━┓\n┃   ${s1}     |      ${s2}   |    ${s3}   ┃\n┗━━━━━━━━━━━┛\n\n✦ ━━━━━━━━━━━ ✦\n🎰 SLOT DETAILS\n✦ ━━━━━━━━━━━ ✦\n💵 Bet     : ${bet}\n💰 Win     : ${win}\n📊 Profit  : ${profit}\n✦ ━━━━━━━━━━━ ✦`;
+    };
 
-    const slotMsg = await ctx.reply(`${getString("SLOT_SPINNING")}`);
+    const slotMsg = await ctx.reply(getDesign("❓", "❓", "❓", betAmount, "...", "..."));
     
     // Animation effect
+    let animCount = 0;
     const animationInterval = setInterval(async () => {
-        const r1 = Math.floor(Math.random() * slots.length);
-        const r2 = Math.floor(Math.random() * slots.length);
-        const r3 = Math.floor(Math.random() * slots.length);
+        const r1 = slots[Math.floor(Math.random() * slots.length)];
+        const r2 = slots[Math.floor(Math.random() * slots.length)];
+        const r3 = slots[Math.floor(Math.random() * slots.length)];
+        
         await ctx.telegram.editMessageText(
             ctx.chat.id,
             slotMsg.message_id,
             null,
-            `🎰 | ${slots[r1]} | ${slots[r2]} | ${slots[r3]} | 🎰`
+            getDesign(r1, r2, r3, betAmount, "Spinning...", "...")
         ).catch(() => {});
-    }, 800);
+        
+        animCount++;
+        if (animCount >= 4) clearInterval(animationInterval);
+    }, 700);
+
+    let result1 = Math.floor(Math.random() * slots.length);
+    let result2 = Math.floor(Math.random() * slots.length);
+    let result3 = Math.floor(Math.random() * slots.length);
 
     const isThreeMatch = slots[result1] === slots[result2] && slots[result2] === slots[result3];
     const isTwoMatch = slots[result1] === slots[result2] || slots[result2] === slots[result3] || slots[result1] === slots[result3];
@@ -56,6 +65,7 @@ const slotHandler = async (ctx) => {
     }
 
     const winAmount = betAmount * winMultiplier;
+    const profit = winAmount - betAmount;
 
     setTimeout(async () => {
       clearInterval(animationInterval);
@@ -69,15 +79,11 @@ const slotHandler = async (ctx) => {
         await increaseBankAmount({ ctx, increaseAmount: betAmount });
       }
 
-      const resultText = winAmount > 0 
-        ? `🤑 ${getString("SLOT_WIN")} ${winAmount}` 
-        : `🥶 ${getString("SLOT_LOSS")} ${betAmount}`;
-
       return await ctx.telegram.editMessageText(
         ctx.chat.id,
         slotMsg.message_id,
         null,
-        `${getString("SLOT_MACHINE")}:\n${slots[result1]} | ${slots[result2]} | ${slots[result3]}\n ${resultText}`
+        getDesign(slots[result1], slots[result2], slots[result3], betAmount, winAmount, profit > 0 ? `+${profit}` : profit)
       ).catch(err => logger.error(err));
     }, 3000);
 

@@ -1,8 +1,11 @@
 const { Composer } = require("telegraf");
-const { increaseBankAmount, decreaseBankAmount } = require("../modules/bank.module");
+const { increaseBankAmount } = require("../modules/bank.module");
 const { getString, getCommandName } = require("../lang/index");
 const User = require("../database/entity/user.entitiy");
 const logger = require("../logger");
+
+// Simple in-memory lock to prevent concurrent spins for the same user
+const activeSpins = new Set();
 
 const slotHandler = async (ctx) => {
   try {
@@ -26,6 +29,11 @@ const slotHandler = async (ctx) => {
         }
     }
 
+    // Prevent multiple concurrent spins for the same user
+    if (activeSpins.has(ctx.from.id)) {
+        return ctx.reply("⏳ Please wait for your current spin to finish!").catch(() => {});
+    }
+
     const args = text.split(" ");
     const betAmount = args[1] ? parseInt(args[1]) : 1000;
 
@@ -44,7 +52,10 @@ const slotHandler = async (ctx) => {
       return ctx.reply(getString("NO_BALANCE"));
     }
 
-    // Send waiting emoji
+    // Mark user as actively spinning
+    activeSpins.add(ctx.from.id);
+
+    // Send waiting emoji first
     const waitMsg = await ctx.reply("⏳");
 
     const getDesign = (s1, s2, s3, bet = "", win = "", profit = "", status = "") => {
@@ -68,8 +79,7 @@ const slotHandler = async (ctx) => {
         winMultiplier = 25;
         status = "Jackpot";
     } else if (random < percentages.J + percentages.W) {
-        // Win: W 60% -> 2x (matching 2) or 5x (matching 3)
-        // For simplicity, let's make it a guaranteed win of some sort
+        // Win: W 60%
         const isTriple = Math.random() > 0.7;
         if (isTriple) {
             const sym = slots[Math.floor(Math.random() * slots.length)];
@@ -102,32 +112,53 @@ const slotHandler = async (ctx) => {
     const winAmount = betAmount * winMultiplier;
     const profit = winAmount - betAmount;
 
-    // Simulate delay
-    setTimeout(async () => {
-      // Delete waiting message
-      await ctx.telegram.deleteMessage(ctx.chat.id, waitMsg.message_id).catch(() => {});
+    // Animation: 2 seconds of spinning
+    let animCount = 0;
+    const animationInterval = setInterval(async () => {
+        const r1 = slots[Math.floor(Math.random() * slots.length)];
+        const r2 = slots[Math.floor(Math.random() * slots.length)];
+        const r3 = slots[Math.floor(Math.random() * slots.length)];
+        
+        await ctx.telegram.editMessageText(
+            ctx.chat.id,
+            waitMsg.message_id,
+            null,
+            getDesign(r1, r2, r3, betAmount, "Spinning...", "...", "Spinning")
+        ).catch(() => {});
+        
+        animCount++;
+        if (animCount >= 3) clearInterval(animationInterval);
+    }, 600);
 
+    // Final result after 2 seconds
+    setTimeout(async () => {
+      clearInterval(animationInterval);
+      
       if (winAmount > 0) {
         await User.findOneAndUpdate(
           { id: ctx.from.id },
           { $inc: { balance: winAmount } }
         );
-        // If it's a win, we might need to take it from the bank if the bank is used as a pool
-        // But the original code only added losses to the bank.
-        // Let's stick to the bank logic: losses go to bank.
       } else {
         await increaseBankAmount({ ctx, increaseAmount: betAmount });
       }
 
       const profitText = profit >= 0 ? `+${profit}` : `${profit}`;
 
-      return await ctx.reply(
+      await ctx.telegram.editMessageText(
+        ctx.chat.id,
+        waitMsg.message_id,
+        null,
         getDesign(result1, result2, result3, betAmount, winAmount, profitText, status)
       ).catch(err => logger.error(err));
-    }, 2000);
+
+      // Remove user from active spins
+      activeSpins.delete(ctx.from.id);
+    }, 2200);
 
   } catch (err) {
     logger.error(err);
+    activeSpins.delete(ctx.from.id);
     return ctx.reply(getString("DATABASE_LOCK"));
   }
 };

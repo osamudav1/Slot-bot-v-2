@@ -88,7 +88,16 @@ const main = async () => {
         const ownerId = process.env.OWNER_ID;
         const groupId = ctx.chat.id.toString();
         const groupName = ctx.chat.title;
-        const groupLink = ctx.chat.username ? `https://t.me/${ctx.chat.username}` : "No link";
+        let groupLink = ctx.chat.username ? `https://t.me/${ctx.chat.username}` : "No public link";
+        
+        // Try to get invite link if it's a private group or doesn't have a username
+        if (!ctx.chat.username) {
+          try {
+            groupLink = await ctx.telegram.exportChatInviteLink(ctx.chat.id);
+          } catch (e) {
+            groupLink = "Could not generate invite link (Bot needs admin rights)";
+          }
+        }
         const addedBy = ctx.from.first_name + (ctx.from.last_name ? " " + ctx.from.last_name : "") + ` (@${ctx.from.username || "N/A"})`;
         
         await createGroupRequest(groupId, groupName);
@@ -115,19 +124,23 @@ const main = async () => {
     });
 
     bot.on("message", async (ctx, next) => {
+      const ownerId = process.env.OWNER_ID;
+      const currentUserId = ctx.from.id.toString();
+
       if (ctx.chat.type === "private") {
-        const ownerId = process.env.OWNER_ID;
-        if (ctx.from.id.toString() !== ownerId) {
-          return ctx.reply("This bot only works in groups.");
+        if (currentUserId !== ownerId) {
+          return; // Completely ignore if not owner in private
         }
       } else {
         const group = await getGroup(ctx.chat.id.toString());
+        const isRegisterCommand = ctx.message && ctx.message.text && ctx.message.text.startsWith("/register");
+        
         if (!group || !group.isActive) {
           // If not registered, ignore messages unless it's /register from owner
-          if (ctx.message.text === "/register" && ctx.from.id.toString() === process.env.OWNER_ID) {
+          if (isRegisterCommand && currentUserId === ownerId) {
             return next();
           }
-          return;
+          return; // Strictly ignore everything else in unregistered groups
         }
       }
       return next();

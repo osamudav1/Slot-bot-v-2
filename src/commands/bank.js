@@ -1,6 +1,6 @@
 const { Composer } = require("telegraf");
 const { getUser } = require("../modules/user.module");
-const { getString, getCommandName } = require("../lang/index");
+const { getCommandName } = require("../lang/index");
 
 const getBadge = (balance) => {
   if (balance <= 25000) return "🐣 Beginner";
@@ -9,7 +9,7 @@ const getBadge = (balance) => {
   if (balance <= 300000) return "🧠 Skilled";
   if (balance <= 800000) return "🔥 Pro";
   if (balance <= 1300000) return "💎 Elite";
-  if (balance <= 50000000) return "🛡️ Veteran"; // Note: 5,000,000 was mentioned, but next tier starts at 50,000,001
+  if (balance <= 50000000) return "🛡️ Veteran";
   if (balance <= 100000000) return "👑 Master";
   if (balance <= 500000000) return "⚡️ Legend";
   return "💀 GOD LEVEL & Mythic";
@@ -21,7 +21,10 @@ module.exports = Composer.command(getCommandName("bank"), async (ctx) => {
   const badge = getBadge(balance);
   const firstName = ctx.from.first_name;
 
-  const response = `🏦 Bank | ✧ ${firstName}\n💰 MMK : ${balance}\n💎 badge: ${badge}`;
+  // Format balance with commas
+  const formattedBalance = balance.toLocaleString();
+
+  const response = `🏦『 ${firstName} ʙᴀɴᴋ 』\n💰 MMK ⇢ ${formattedBalance}MMK\n💎 Rank ⇢ ${badge}`;
   
   await ctx.reply(response);
 });

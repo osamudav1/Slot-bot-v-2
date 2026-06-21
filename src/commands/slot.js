@@ -76,7 +76,7 @@ const slotHandler = async (ctx) => {
     const slots = Object.keys(fruitRewards);
     const jackpotEmoji = "💎";
 
-    const percentages = global.slotPercentages || { W: 45, L: 52, J: 3 }; // Lowered win rates for 4 columns
+    const percentages = global.slotPercentages || { W: 45, L: 52, J: 3 }; 
     const random = Math.random() * 100;
 
     let result1, result2, result3, result4;
@@ -87,9 +87,8 @@ const slotHandler = async (ctx) => {
         // Jackpot Case: 4 diamonds
         result1 = result2 = result3 = result4 = jackpotEmoji;
         winMultiplier = 25;
-        status = "Jackpot";
+        status = "Jackpot (25x)";
     } else if (random < percentages.J + percentages.W) {
-        // Win Case: Could be 4-of-a-kind, 3-of-a-kind, or 2-of-a-kind
         const winType = Math.random() * 100;
         
         if (winType < 10) { 
@@ -97,7 +96,7 @@ const slotHandler = async (ctx) => {
             const sym = slots[Math.floor(Math.random() * slots.length)];
             result1 = result2 = result3 = result4 = sym;
             winMultiplier = 15;
-            status = "Win (4x)";
+            status = `Win (${winMultiplier}x)`;
         } else if (winType < 40) {
             // 3-of-a-kind (Triple)
             const sym = slots[Math.floor(Math.random() * slots.length)];
@@ -108,7 +107,7 @@ const slotHandler = async (ctx) => {
             } while (other === sym);
             result4 = other;
             winMultiplier = fruitRewards[sym] || 5;
-            status = "Win (3x)";
+            status = `Win (${winMultiplier}x)`;
         } else {
             // 2-of-a-kind (Double)
             const sym = slots[Math.floor(Math.random() * slots.length)];
@@ -123,10 +122,10 @@ const slotHandler = async (ctx) => {
             result3 = other1;
             result4 = other2;
             winMultiplier = 2;
-            status = "Win (2x)";
+            status = `Win (${winMultiplier}x)`;
         }
     } else {
-        // Lose Case: All different or no significant matches
+        // Lose Case
         const shuffled = [...slots].sort(() => 0.5 - Math.random());
         result1 = shuffled[0];
         result2 = shuffled[1];

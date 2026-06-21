@@ -5,11 +5,12 @@ const { increaseBankAmount } = require("../modules/bank.module");
 
 module.exports = Composer.command(getCommandName("sendmoney"), async (ctx) => {
   const taxRate = 0; // Set tax to 0 or a very small amount as requested to simplify
+  const cmd = getCommandName("sendmoney");
   
   // Check if it's a reply
   const replyToMessage = ctx.message.reply_to_message;
   if (!replyToMessage || !replyToMessage.from) {
-    return ctx.reply("Usage: Reply to a user's message with /sendmoney <amount>");
+    return ctx.reply(`Usage: Reply to a user's message with /${cmd} <amount>`);
   }
 
   const targetUser = replyToMessage.from;
@@ -23,7 +24,7 @@ module.exports = Composer.command(getCommandName("sendmoney"), async (ctx) => {
   const moneyAmount = parseInt(args[1]);
 
   if (isNaN(moneyAmount) || moneyAmount <= 0) {
-    return ctx.reply("Please provide a valid amount. Example: /sendmoney 1000");
+    return ctx.reply(`Please provide a valid amount. Example: /${cmd} 1000`);
   }
 
   const user = await getUser({ id: senderId });

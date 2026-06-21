@@ -96,9 +96,35 @@ const main = async () => {
 
     bot.use(session());
 
-    await loadScenes(bot);
-    await loadCommands(bot);
-    await setBotCommands(bot);
+    // Registration and Owner Check Middleware (MUST BE BEFORE COMMANDS)
+    bot.use(async (ctx, next) => {
+      if (!ctx.from || ctx.from.is_bot) return next();
+      
+      const ownerId = process.env.OWNER_ID;
+      const currentUserId = ctx.from.id.toString();
+
+      // Update user info in background
+      getUser({ id: ctx.from.id, firstName: ctx.from.first_name }).catch(err => logger.error("User sync error: " + err.message));
+
+      if (ctx.chat.type === "private") {
+        if (ownerId && currentUserId !== ownerId) {
+          return; // Silent in private if not owner
+        }
+      } else if (ctx.chat.type === "group" || ctx.chat.type === "supergroup") {
+        const group = await getGroup(ctx.chat.id.toString());
+        const text = ctx.message?.text || "";
+        const isRegisterCommand = text.startsWith("/register");
+        
+        if (!group || !group.isActive) {
+          // If not registered, only allow /register from owner
+          if (isRegisterCommand && currentUserId === ownerId) {
+            return next();
+          }
+          return; // Strictly silent in unregistered groups
+        }
+      }
+      return next();
+    });
 
     bot.on("new_chat_members", async (ctx) => {
       const isBotAdded = ctx.message.new_chat_members.some(
@@ -111,7 +137,6 @@ const main = async () => {
         const groupName = ctx.chat.title;
         let groupLink = ctx.chat.username ? `https://t.me/${ctx.chat.username}` : "No public link";
         
-        // Try to get invite link if it's a private group or doesn't have a username
         if (!ctx.chat.username) {
           try {
             groupLink = await ctx.telegram.exportChatInviteLink(ctx.chat.id);
@@ -144,33 +169,9 @@ const main = async () => {
       }
     });
 
-    bot.on("message", async (ctx, next) => {
-      const ownerId = process.env.OWNER_ID;
-      const currentUserId = ctx.from.id.toString();
-
-      // Update user info in background if message exists
-      if (ctx.from && !ctx.from.is_bot) {
-        getUser({ id: ctx.from.id, firstName: ctx.from.first_name }).catch(err => logger.error("User sync error: " + err.message));
-      }
-
-      if (ctx.chat.type === "private") {
-        if (currentUserId !== ownerId) {
-          return; // Completely ignore if not owner in private
-        }
-      } else {
-        const group = await getGroup(ctx.chat.id.toString());
-        const isRegisterCommand = ctx.message && ctx.message.text && ctx.message.text.startsWith("/register");
-        
-        if (!group || !group.isActive) {
-          // If not registered, ignore messages unless it's /register from owner
-          if (isRegisterCommand && currentUserId === ownerId) {
-            return next();
-          }
-          return; // Strictly ignore everything else in unregistered groups
-        }
-      }
-      return next();
-    });
+    await loadScenes(bot);
+    await loadCommands(bot);
+    await setBotCommands(bot);
 
     bot.on("message", async (ctx) => {
       await handleCaseEvent(ctx);

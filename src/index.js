@@ -6,6 +6,8 @@ const express = require("express");
 const { connectDB } = require("./database/index");
 const { getCommandName } = require("./lang/index");
 const handleCaseEvent = require("./handlers/handle.case");
+const { getGroup, createGroupRequest, getTotalGroups } = require("./modules/group.module");
+const { Markup } = require("telegraf");
 
 const loadCommands = async (bot) => {
   logger.info(`Commands loading...`);
@@ -48,6 +50,7 @@ const setBotCommands = async (bot) => {
     { command: getCommandName("centralbank"), description: "View central bank" },
     { command: getCommandName("case"), description: "Open a crate" },
     { command: getCommandName("add"), description: "Add/Remove balance (Owner only)" },
+    { command: "register", description: "Activate group (Owner only)" },
   ];
   await bot.telegram.setMyCommands(commands);
   logger.success("Bot commands menu updated");
@@ -76,9 +79,62 @@ const main = async () => {
     await loadCommands(bot);
     await setBotCommands(bot);
 
+    bot.on("new_chat_members", async (ctx) => {
+      const isBotAdded = ctx.message.new_chat_members.some(
+        (member) => member.id === ctx.botInfo.id
+      );
+
+      if (isBotAdded) {
+        const ownerId = process.env.OWNER_ID;
+        const groupId = ctx.chat.id.toString();
+        const groupName = ctx.chat.title;
+        const groupLink = ctx.chat.username ? `https://t.me/${ctx.chat.username}` : "No link";
+        const addedBy = ctx.from.first_name + (ctx.from.last_name ? " " + ctx.from.last_name : "") + ` (@${ctx.from.username || "N/A"})`;
+        
+        await createGroupRequest(groupId, groupName);
+        const totalGroups = await getTotalGroups();
+
+        if (ownerId) {
+          const ownerMsg = `📢 Bot added to a new group!\n\n` +
+            `Group ID: ${groupId}\n` +
+            `Add user mentioned: ${addedBy}\n` +
+            `Group name: ${groupName}\n` +
+            `Group link: ${groupLink}\n` +
+            `Total Gp count: ${totalGroups}`;
+          
+          await ctx.telegram.sendMessage(ownerId, ownerMsg).catch(err => logger.error("Failed to notify owner: " + err.message));
+        }
+
+        return ctx.reply(
+          "ဘော့အသုံးပြုလိုပါက owner ကိုဆက်သွယ်ပါ",
+          Markup.inlineKeyboard([
+            [Markup.button.url("Owner", `tg://user?id=${ownerId}`)]
+          ])
+        );
+      }
+    });
+
+    bot.on("message", async (ctx, next) => {
+      if (ctx.chat.type === "private") {
+        const ownerId = process.env.OWNER_ID;
+        if (ctx.from.id.toString() !== ownerId) {
+          return ctx.reply("This bot only works in groups.");
+        }
+      } else {
+        const group = await getGroup(ctx.chat.id.toString());
+        if (!group || !group.isActive) {
+          // If not registered, ignore messages unless it's /register from owner
+          if (ctx.message.text === "/register" && ctx.from.id.toString() === process.env.OWNER_ID) {
+            return next();
+          }
+          return;
+        }
+      }
+      return next();
+    });
+
     bot.on("message", async (ctx) => {
       await handleCaseEvent(ctx);
-      // Removed sticker, photo, link, and badword moderation
     });
 
     await bot.launch(() => {

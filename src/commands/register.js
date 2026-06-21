@@ -9,15 +9,30 @@ module.exports = Composer.command("register", async (ctx) => {
     return; // Ignore if not owner
   }
 
+  const args = ctx.message.text.split(" ");
+  const subCommand = args[1]?.toLowerCase();
+
+  // Handle /register on/off in DM
   if (ctx.chat.type === "private") {
-    return ctx.reply("This command can only be used in groups.");
+    if (subCommand === "on") {
+      global.autoRegister = false; // "on" means manual registration is ON
+      return ctx.reply("✅ Manual registration is now ON. Groups must be registered by owner.");
+    } else if (subCommand === "off") {
+      global.autoRegister = true; // "off" means manual registration is OFF (Auto-register)
+      return ctx.reply("✅ Manual registration is now OFF. New groups will be automatically registered.");
+    } else {
+      return ctx.reply("Usage: /register on (Manual) or /register off (Auto)");
+    }
   }
 
-  try {
-    await registerGroup(ctx.chat.id.toString(), ctx.chat.title, currentUserId);
-    return ctx.reply("♻️ Approved ♻️");
-  } catch (err) {
-    console.error(err);
-    return ctx.reply("🔴 Error registering group.");
+  // Group registration logic
+  if (ctx.chat.type === "group" || ctx.chat.type === "supergroup") {
+    try {
+      await registerGroup(ctx.chat.id.toString(), ctx.chat.title, currentUserId);
+      return ctx.reply("♻️ Approved ♻️");
+    } catch (err) {
+      console.error(err);
+      return ctx.reply("🔴 Error registering group.");
+    }
   }
 });

@@ -6,7 +6,7 @@ const express = require("express");
 const { connectDB } = require("./database/index");
 const { getCommandName } = require("./lang/index");
 const handleCaseEvent = require("./handlers/handle.case");
-const { getGroup, createGroupRequest, getTotalGroups } = require("./modules/group.module");
+const { getGroup, createGroupRequest, getTotalGroups, registerGroup } = require("./modules/group.module");
 const { getUser } = require("./modules/user.module");
 const { Markup } = require("telegraf");
 const User = require("./database/entity/user.entitiy");
@@ -107,7 +107,6 @@ const main = async () => {
       // Check for new user (first time start or message)
       const existingUser = await User.findOne({ id: ctx.from.id });
       if (!existingUser) {
-        // First time user! Notify owner
         if (ownerId) {
           const newUserMsg = `🆕 New User Notification!\n\n` +
             `User Name: ${ctx.from.first_name}${ctx.from.last_name ? " " + ctx.from.last_name : ""}\n` +
@@ -130,6 +129,12 @@ const main = async () => {
         const text = ctx.message?.text || "";
         const isRegisterCommand = text.startsWith("/register");
         
+        // If manual registration is OFF (autoRegister is true), auto-register if not active
+        if (global.autoRegister && (!group || !group.isActive)) {
+          await registerGroup(ctx.chat.id.toString(), ctx.chat.title, ownerId).catch(e => logger.error("Auto-register error: " + e.message));
+          return next();
+        }
+
         if (!group || !group.isActive) {
           // If not registered, only allow /register from owner
           if (isRegisterCommand && currentUserId === ownerId) {
@@ -174,8 +179,14 @@ const main = async () => {
           await ctx.telegram.sendMessage(ownerId, ownerMsg).catch(err => logger.error("Failed to notify owner: " + err.message));
         }
 
+        // Auto-register if global.autoRegister is true
+        if (global.autoRegister) {
+            await registerGroup(groupId, groupName, ownerId).catch(e => logger.error("Auto-register on join error: " + e.message));
+            return ctx.reply("♻️ Approved ♻️ (Auto-registered)");
+        }
+
         return ctx.reply(
-          "ဘော့အသုံးပြုလိုပါက Owner ကိုဆက်သွယ်ပါ",
+          "bot အသုံးပြရန် owner မှ Group ကိုregister လုပ်ပေးရန်လိုအပ်ပါသည်\n\nအသုံးပြုလိုပါက ဆက်သွယ်ပေးပါ",
           Markup.inlineKeyboard([
             [Markup.button.url("Owner", `tg://user?id=${ownerId}`)]
           ])

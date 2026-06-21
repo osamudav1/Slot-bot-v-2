@@ -1,13 +1,21 @@
 const User = require("../database/entity/user.entitiy");
 
-const getUser = async ({ id }) => {
-  // Use findOneAndUpdate with upsert: true to atomically find or create the user
-  // This prevents race conditions where two messages from the same user arrive at the same time
+const getUser = async ({ id, firstName }) => {
+  const update = { $set: {} };
+  if (firstName) {
+    update.$set.firstName = firstName;
+  }
+
   let user = await User.findOneAndUpdate(
     { id },
-    { $setOnInsert: { id: id, balance: 0 } },
+    update,
     { upsert: true, new: true, setDefaultsOnInsert: true }
   );
+
+  if (!user.balance && user.balance !== 0) {
+    user.balance = 0;
+    await user.save();
+  }
 
   return user;
 };

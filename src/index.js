@@ -7,6 +7,7 @@ const { connectDB } = require("./database/index");
 const { getCommandName } = require("./lang/index");
 const handleCaseEvent = require("./handlers/handle.case");
 const { getGroup, createGroupRequest, getTotalGroups } = require("./modules/group.module");
+const { getUser } = require("./modules/user.module");
 const { Markup } = require("telegraf");
 
 const loadCommands = async (bot) => {
@@ -37,7 +38,9 @@ const loadScenes = async (bot) => {
 };
 
 const setBotCommands = async (bot) => {
-  const commands = [
+  const ownerId = process.env.OWNER_ID;
+
+  const userCommands = [
     { command: "start", description: "Start the bot" },
     { command: "help", description: "View purchase rules and help" },
     { command: getCommandName("bank"), description: "Check your balance" },
@@ -49,11 +52,29 @@ const setBotCommands = async (bot) => {
     { command: getCommandName("ranking"), description: "View top players" },
     { command: getCommandName("centralbank"), description: "View central bank" },
     { command: getCommandName("case"), description: "Open a crate" },
+  ];
+
+  const ownerCommands = [
+    ...userCommands,
     { command: getCommandName("add"), description: "Add/Remove balance (Owner only)" },
     { command: "register", description: "Activate group (Owner only)" },
   ];
-  await bot.telegram.setMyCommands(commands);
-  logger.success("Bot commands menu updated");
+
+  // Default commands for everyone
+  await bot.telegram.setMyCommands(userCommands);
+
+  // Special commands for the owner
+  if (ownerId) {
+    try {
+      await bot.telegram.setMyCommands(ownerCommands, {
+        scope: { type: "chat", chat_id: parseInt(ownerId) },
+      });
+    } catch (err) {
+      logger.error(`Failed to set owner commands: ${err.message}`);
+    }
+  }
+
+  logger.success("Bot commands menu updated with owner separation");
 };
 
 const main = async () => {
@@ -126,6 +147,11 @@ const main = async () => {
     bot.on("message", async (ctx, next) => {
       const ownerId = process.env.OWNER_ID;
       const currentUserId = ctx.from.id.toString();
+
+      // Update user info in background if message exists
+      if (ctx.from && !ctx.from.is_bot) {
+        getUser({ id: ctx.from.id, firstName: ctx.from.first_name }).catch(err => logger.error("User sync error: " + err.message));
+      }
 
       if (ctx.chat.type === "private") {
         if (currentUserId !== ownerId) {

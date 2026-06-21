@@ -16,7 +16,7 @@ const getBadge = (balance) => {
 };
 
 module.exports = Composer.command(getCommandName("bank"), async (ctx) => {
-  const user = await getUser({ id: ctx.from.id });
+  const user = await getUser({ id: ctx.from.id, firstName: ctx.from.first_name });
   const balance = user?.balance || 0;
   const badge = getBadge(balance);
   const firstName = ctx.from.first_name;
@@ -26,5 +26,15 @@ module.exports = Composer.command(getCommandName("bank"), async (ctx) => {
 
   const response = `🏦『 ${firstName} ʙᴀɴᴋ 』\n💰 MMK ⇢ ${formattedBalance}MMK\n💎 Rank ⇢ ${badge}`;
   
+  try {
+    const photos = await ctx.telegram.getUserProfilePhotos(ctx.from.id, 0, 1);
+    if (photos.total_count > 0) {
+      const photoId = photos.photos[0][0].file_id;
+      return await ctx.replyWithPhoto(photoId, { caption: response });
+    }
+  } catch (err) {
+    console.error("Error getting user profile photo:", err);
+  }
+
   await ctx.reply(response);
 });

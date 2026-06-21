@@ -18,6 +18,10 @@ const userSchema = new mongoose.Schema({
     type: Number,
     default: 0,
   },
+  firstName: {
+    type: String,
+    default: "User",
+  },
   case: {
     type: Boolean,
     default: false,

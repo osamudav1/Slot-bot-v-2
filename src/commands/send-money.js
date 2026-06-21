@@ -4,33 +4,42 @@ const { getString, getCommandName } = require("../lang/index");
 const { increaseBankAmount } = require("../modules/bank.module");
 
 module.exports = Composer.command(getCommandName("sendmoney"), async (ctx) => {
-  const taxRate = 1;
-  const targetUser = ctx.update.message?.reply_to_message?.from;
-  if (!targetUser) return ctx.reply(`${getString("DATABASE_LOCK")}`);
+  const taxRate = 0; // Set tax to 0 or a very small amount as requested to simplify
+  
+  // Check if it's a reply
+  const replyToMessage = ctx.message.reply_to_message;
+  if (!replyToMessage || !replyToMessage.from) {
+    return ctx.reply("Usage: Reply to a user's message with /sendmoney <amount>");
+  }
 
-  const moneyAmount = parseInt(ctx?.update?.message?.text.split(" ")[1]);
+  const targetUser = replyToMessage.from;
+  const senderId = ctx.from.id;
 
-  const user = await getUser({ id: ctx?.update?.message?.from?.id });
+  if (senderId === targetUser.id) {
+    return ctx.reply(getString("SELF_SEND"));
+  }
 
-  if (user.id === targetUser.id) return ctx.reply(`${getString("SELF_SEND")}`);
+  const args = ctx.message.text.split(" ");
+  const moneyAmount = parseInt(args[1]);
 
-  if (!user) return ctx.reply(`${getString("DATABASE_LOCK")}`);
+  if (isNaN(moneyAmount) || moneyAmount <= 0) {
+    return ctx.reply("Please provide a valid amount. Example: /sendmoney 1000");
+  }
 
-  if (isNaN(moneyAmount) || moneyAmount > user?.balance || moneyAmount <= 0) return ctx.reply(`${getString("NO_BALANCE")}`);
+  const user = await getUser({ id: senderId });
 
-  if (moneyAmount <= (taxRate + 1)) return ctx.reply(`${getString("TAX_INFO")}`);
+  if (!user || user.balance < moneyAmount) {
+    return ctx.reply(getString("NO_BALANCE"));
+  }
 
-  user.balance = user.balance - (moneyAmount + taxRate);
-
+  // Deduct from sender
+  user.balance -= moneyAmount;
   await setUser({ user });
 
+  // Add to recipient
   const targetUserEntity = await getUser({ id: targetUser.id });
-
-  targetUserEntity.balance = targetUserEntity.balance + (moneyAmount - taxRate);
-
+  targetUserEntity.balance += moneyAmount;
   await setUser({ user: targetUserEntity });
 
-  await await increaseBankAmount({ ctx, increaseAmount: taxRate });
-
-  return ctx.reply(`💰 ${getString("SENDED_AMOUNT")} ${moneyAmount} \n📈 ${getString("TAX_AMOUNT")}: ${taxRate}`);
+  return ctx.reply(`✅ Successfully sent ${moneyAmount} MMK to ${targetUser.first_name || 'user'}.`);
 });

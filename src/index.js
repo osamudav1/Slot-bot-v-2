@@ -5,10 +5,6 @@ const fs = require("fs");
 const express = require("express");
 const { connectDB } = require("./database/index");
 const { getCommandName } = require("./lang/index");
-const handleUrl = require("./handlers/handle.link");
-const handleBadWords = require("./handlers/handle.badword");
-const handlePhoto = require("./handlers/handle.photo");
-const handleSticker = require("./handlers/handle.sticker");
 const handleCaseEvent = require("./handlers/handle.case");
 
 const loadCommands = async (bot) => {
@@ -16,6 +12,8 @@ const loadCommands = async (bot) => {
   const commandsList = fs.readdirSync(__dirname + "/commands");
   const commands = [];
   for (const command of commandsList) {
+    // Skip buy.js and items.js as they are no longer needed
+    if (command === "buy.js" || command === "items.js") continue;
     commands.push(require(`./commands/${command}`));
     logger.success(`${command} command loaded`);
   }
@@ -43,8 +41,6 @@ const setBotCommands = async (bot) => {
     { command: getCommandName("salary"), description: "Get your salary" },
     { command: getCommandName("slot"), description: "Play slot machine" },
     { command: getCommandName("market"), description: "View market items" },
-    { command: getCommandName("buy"), description: "Buy an item (e.g., /buy 1)" },
-    { command: getCommandName("items"), description: "View your items" },
     { command: getCommandName("sendmoney"), description: "Send money (Reply to user)" },
     { command: getCommandName("ranking"), description: "View top players" },
     { command: getCommandName("centralbank"), description: "View central bank" },
@@ -58,7 +54,6 @@ const setBotCommands = async (bot) => {
 const main = async () => {
   dotenv.config();
 
-  // 1. Start Health check server IMMEDIATELY for Render
   const app = express();
   const PORT = process.env.PORT || 3000;
   app.get("/", (req, res) => res.status(200).send("OK"));
@@ -69,10 +64,8 @@ const main = async () => {
   });
 
   try {
-    // 2. Connect to Database
     await connectDB();
 
-    // 3. Initialize Bot
     const bot = new Telegraf(process.env.TELEGRAM_BOT_TOKEN);
 
     bot.use(session());
@@ -83,10 +76,7 @@ const main = async () => {
 
     bot.on("message", async (ctx) => {
       await handleCaseEvent(ctx);
-      await handleSticker(ctx);
-      await handlePhoto(ctx);
-      await handleUrl(ctx);
-      await handleBadWords(ctx);
+      // Removed sticker, photo, link, and badword moderation
     });
 
     await bot.launch(() => {

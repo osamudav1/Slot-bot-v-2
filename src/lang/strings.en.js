@@ -1,10 +1,10 @@
 const escapeCharacter = "\n";
 
 module.exports = {
-  HOW_TO_BUY: "🛍️ You can make a purchase in the format /buy productcode, for example, if you write /buy 1, it will deduct that product from your balance.",
-  EARN_MONEY_TIP: "💰 By typing /salary, you can make a withdrawal every 4 hours or stay active in the chat to drop surprise money crates.",
+  HOW_TO_BUY: "",
+  EARN_MONEY_TIP: "💰 By typing /salary, you can make a withdrawal or stay active in the chat to drop surprise money crates.",
   DATABASE_LOCK: "🔴 An error occurred. Please try again.",
-  CURRENCY_INFO: "💎 100 units of MMK equals 1 Diamond. You can earn diamonds quickly by completing tasks, using coupons, or purchasing them for ₺.",
+  CURRENCY_INFO: "",
   TIMEOUT_ERROR: "🔴 You did not respond to the command in time.",
   CAPTCHA_RESPONSE_ERROR: "🔴 Your Captcha response is incorrect.",
   CAPTCHA_HINT: "Type the number marked with the green emoji:",

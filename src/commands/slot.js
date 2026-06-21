@@ -31,7 +31,7 @@ const slotHandler = async (ctx) => {
 
     // Prevent multiple concurrent spins for the same user
     if (activeSpins.has(ctx.from.id)) {
-        return ctx.reply("⏳ Please wait for your current spin to finish!").catch(() => {});
+        return ctx.reply("Please wait for your current spin to finish!").catch(() => {});
     }
 
     const args = text.split(" ");
@@ -55,18 +55,18 @@ const slotHandler = async (ctx) => {
     // Mark user as actively spinning
     activeSpins.add(ctx.from.id);
 
-    // Send waiting emoji first
-    const waitMsg = await ctx.reply("⏳");
+    // Send waiting status
+    const waitMsg = await ctx.reply("🎰 Spinning...");
 
     const getDesign = (s1, s2, s3, bet = "", win = "", profit = "", status = "") => {
         return `🎰 GUESS SLOT V1.0\n✦ ━━━━━━━━━━━ ✦\n\n┏━━━━━━━━━━━┓\n┃   ${s1}     |      ${s2}   |    ${s3}   ┃\n┗━━━━━━━━━━━┛\n\n✦ ━━━━━━━━━━━ ✦\n🎰 SLOT DETAILS\n✦ ━━━━━━━━━━━ ✦\n💵 Bet     : ${bet}\n💰 Win     : ${win}\n📊 Profit  : ${profit} [${status}]\n✦ ━━━━━━━━━━━ ✦`;
     };
 
-    const slots = ["🍒", "🍎", "🍐", "🍉", "🍊", "🍌"];
-    const jackpotEmoji = "💰";
+    const slots = ["🍒", "🍎", "🍐", "🍉", "🍊", "🍌", "🍇", "🍓", "🫐", "🍈", "🍍", "🥭", "🍑", "🍒", "🥝"];
+    const jackpotEmoji = "💎";
 
     // Use default or custom percentages
-    const percentages = global.slotPercentages || { W: 60, L: 30, J: 10 };
+    const percentages = global.slotPercentages || { W: 55, L: 40, J: 5 };
     const random = Math.random() * 100;
 
     let result1, result2, result3;
@@ -74,17 +74,19 @@ const slotHandler = async (ctx) => {
     let status = "Lose";
 
     if (random < percentages.J) {
-        // Jackpot: J 10% -> 25x
+        // Jackpot: J 5% -> 100x
         result1 = result2 = result3 = jackpotEmoji;
-        winMultiplier = 25;
+        winMultiplier = 100;
         status = "Jackpot";
     } else if (random < percentages.J + percentages.W) {
-        // Win: W 60%
-        const isTriple = Math.random() > 0.7;
+        // Win: W 55%
+        const isTriple = Math.random() > 0.8;
         if (isTriple) {
             const sym = slots[Math.floor(Math.random() * slots.length)];
             result1 = result2 = result3 = sym;
-            winMultiplier = 5;
+            // Triple fruits: 10x to 64x
+            const multipliers = [10, 20, 32, 64, 80];
+            winMultiplier = multipliers[Math.floor(Math.random() * multipliers.length)];
         } else {
             const sym = slots[Math.floor(Math.random() * slots.length)];
             result1 = result2 = sym;
@@ -93,11 +95,12 @@ const slotHandler = async (ctx) => {
                 other = slots[Math.floor(Math.random() * slots.length)];
             } while (other === sym);
             result3 = other;
-            winMultiplier = 2;
+            // Double fruits: 2x to 5x
+            winMultiplier = Math.floor(Math.random() * 4) + 2;
         }
         status = "Win";
     } else {
-        // Lose: L 30%
+        // Lose: L 40%
         result1 = slots[Math.floor(Math.random() * slots.length)];
         do {
             result2 = slots[Math.floor(Math.random() * slots.length)];
@@ -112,7 +115,7 @@ const slotHandler = async (ctx) => {
     const winAmount = betAmount * winMultiplier;
     const profit = winAmount - betAmount;
 
-    // Animation: 2 seconds of spinning
+    // Animation: 3 steps of spinning
     let animCount = 0;
     const animationInterval = setInterval(async () => {
         const r1 = slots[Math.floor(Math.random() * slots.length)];
@@ -130,7 +133,7 @@ const slotHandler = async (ctx) => {
         if (animCount >= 3) clearInterval(animationInterval);
     }, 600);
 
-    // Final result after 2 seconds
+    // Final result after 2.2 seconds
     setTimeout(async () => {
       clearInterval(animationInterval);
       

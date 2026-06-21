@@ -7,11 +7,13 @@ const logger = require("../logger");
 const activeSpins = new Set();
 
 const slotHandler = async (ctx) => {
+  const userId = ctx.from.id;
   try {
     const ownerId = process.env.OWNER_ID;
-    const currentUserId = ctx.from.id.toString();
+    const currentUserId = userId.toString();
     const text = ctx.message.text || "";
 
+    // Handle percentage updates (Owner only)
     if (ownerId && currentUserId === ownerId && text.includes("W") && text.includes("L") && text.includes("J")) {
         const wMatch = text.match(/W\s*(\d+)%/);
         const lMatch = text.match(/L\s*(\d+)%/);
@@ -27,7 +29,7 @@ const slotHandler = async (ctx) => {
         }
     }
 
-    if (activeSpins.has(ctx.from.id)) {
+    if (activeSpins.has(userId)) {
         return ctx.reply("Please wait for your current spin to finish!").catch(() => {});
     }
 
@@ -38,8 +40,9 @@ const slotHandler = async (ctx) => {
       return ctx.reply("Usage: /slot <amount> or .slot <amount>");
     }
 
+    // Atomic update to check and deduct balance
     const user = await User.findOneAndUpdate(
-      { id: ctx.from.id, balance: { $gte: betAmount } },
+      { id: userId, balance: { $gte: betAmount } },
       { $inc: { balance: -betAmount } },
       { new: true }
     );
@@ -48,19 +51,7 @@ const slotHandler = async (ctx) => {
       return ctx.reply(getString("NO_BALANCE"));
     }
 
-    activeSpins.add(ctx.from.id);
-
-    // Initial message with lightning emoji
-    const waitMsg = await ctx.reply("⚡️");
-    
-    // Auto-delete lightning emoji after 1s and start spinning
-    setTimeout(async () => {
-        try {
-            await ctx.telegram.deleteMessage(ctx.chat.id, waitMsg.message_id).catch(() => {});
-        } catch (e) {}
-    }, 1000);
-
-    const spinMsg = await ctx.reply("🎰 Spinning...");
+    activeSpins.add(userId);
 
     const getDesign = (s1, s2, s3, bet = "", win = "", profit = "", status = "") => {
         return `🎰 GUESS SLOT V1.0\n✦ ━━━━━━━━━━━ ✦\n\n┏━━━━━━━━━━━┓\n┃   ${s1}     |      ${s2}   |    ${s3}   ┃\n┗━━━━━━━━━━━┛\n\n✦ ━━━━━━━━━━━ ✦\n🎰 SLOT DETAILS\n✦ ━━━━━━━━━━━ ✦\n💵 Bet     : ${bet} MMK\n💰 Win     : ${win} MMK\n📊 Profit  : ${profit} MMK [${status}]\n✦ ━━━━━━━━━━━ ✦`;
@@ -113,51 +104,26 @@ const slotHandler = async (ctx) => {
     const winAmount = betAmount * winMultiplier;
     const profit = winAmount - betAmount;
 
-    let animCount = 0;
-    const animationInterval = setInterval(async () => {
-        const r1 = slots[Math.floor(Math.random() * slots.length)];
-        const r2 = slots[Math.floor(Math.random() * slots.length)];
-        const r3 = slots[Math.floor(Math.random() * slots.length)];
-        
-        await ctx.telegram.editMessageText(
-            ctx.chat.id,
-            spinMsg.message_id,
-            null,
-            getDesign(r1, r2, r3, betAmount, "Spinning...", "...", "Spinning")
-        ).catch(() => {});
-        
-        animCount++;
-        if (animCount >= 3) clearInterval(animationInterval);
-    }, 600);
+    // Credit win amount or add to bank
+    if (winAmount > 0) {
+      await User.findOneAndUpdate(
+        { id: userId },
+        { $inc: { balance: winAmount } }
+      );
+    } else {
+      await increaseBankAmount({ ctx, increaseAmount: betAmount }).catch(err => logger.error("Bank update error: " + err.message));
+    }
 
-    setTimeout(async () => {
-      clearInterval(animationInterval);
-      
-      if (winAmount > 0) {
-        await User.findOneAndUpdate(
-          { id: ctx.from.id },
-          { $inc: { balance: winAmount } }
-        );
-      } else {
-        await increaseBankAmount({ ctx, increaseAmount: betAmount });
-      }
+    const profitText = profit >= 0 ? `+${profit}` : `${profit}`;
 
-      const profitText = profit >= 0 ? `+${profit}` : `${profit}`;
-
-      await ctx.telegram.editMessageText(
-        ctx.chat.id,
-        spinMsg.message_id,
-        null,
-        getDesign(result1, result2, result3, betAmount, winAmount, profitText, status)
-      ).catch(err => logger.error(err));
-
-      activeSpins.delete(ctx.from.id);
-    }, 2200);
+    // Send result immediately
+    await ctx.reply(getDesign(result1, result2, result3, betAmount, winAmount, profitText, status)).catch(err => logger.error("Reply error: " + err.message));
 
   } catch (err) {
-    logger.error(err);
-    activeSpins.delete(ctx.from.id);
-    return ctx.reply(getString("DATABASE_LOCK"));
+    logger.error("Slot handler error: " + err.stack);
+    return ctx.reply(getString("DATABASE_LOCK")).catch(() => {});
+  } finally {
+    activeSpins.delete(userId);
   }
 };
 

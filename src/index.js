@@ -37,6 +37,7 @@ const loadScenes = async (bot) => {
 const setBotCommands = async (bot) => {
   const commands = [
     { command: "start", description: "Start the bot" },
+    { command: "help", description: "View purchase rules and help" },
     { command: getCommandName("bank"), description: "Check your balance" },
     { command: getCommandName("salary"), description: "Get your salary" },
     { command: getCommandName("slot"), description: "Play slot machine" },

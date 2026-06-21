@@ -40,23 +40,24 @@ const loadScenes = async (bot) => {
 const setBotCommands = async (bot) => {
   const ownerId = process.env.OWNER_ID;
 
+  // Use the new command names directly to be safe
   const userCommands = [
     { command: "start", description: "Start the bot" },
     { command: "help", description: "View purchase rules and help" },
-    { command: getCommandName("bank"), description: "Check your balance" },
-    { command: getCommandName("salary"), description: "Get your salary" },
-    { command: getCommandName("slot"), description: "Play slot machine" },
-    { command: getCommandName("market"), description: "View market items" },
+    { command: getCommandName("bank") || "bank", description: "Check your balance" },
+    { command: getCommandName("salary") || "salary", description: "Get your salary" },
+    { command: getCommandName("slot") || "slot", description: "Play slot machine" },
+    { command: "gmarket", description: "View market items" },
     { command: "daily", description: "Claim your daily reward" },
-    { command: getCommandName("sendmoney"), description: "Send money (Reply to user)" },
-    { command: getCommandName("ranking"), description: "View top players" },
-    { command: getCommandName("centralbank"), description: "View central bank" },
-    { command: getCommandName("case"), description: "Open a crate" },
+    { command: "mgift", description: "Send money (Reply to user)" },
+    { command: getCommandName("ranking") || "ranking", description: "View top players" },
+    { command: getCommandName("centralbank") || "centralbank", description: "View central bank" },
+    { command: getCommandName("case") || "case", description: "Open a crate" },
   ];
 
   const ownerCommands = [
     ...userCommands,
-    { command: getCommandName("add"), description: "Add/Remove balance (Owner only)" },
+    { command: getCommandName("add") || "add", description: "Add/Remove balance (Owner only)" },
     { command: "register", description: "Activate group (Owner only)" },
   ];
 

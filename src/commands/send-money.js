@@ -3,9 +3,9 @@ const { getUser, setUser } = require("../modules/user.module");
 const { getString, getCommandName } = require("../lang/index");
 const { increaseBankAmount } = require("../modules/bank.module");
 
-module.exports = Composer.command(getCommandName("sendmoney"), async (ctx) => {
-  const taxRate = 0; // Set tax to 0 or a very small amount as requested to simplify
-  const cmd = getCommandName("sendmoney");
+const sendMoneyHandler = async (ctx) => {
+  const taxRate = 0; 
+  const cmd = ctx.message.text.split(" ")[0].replace("/", "");
   
   // Check if it's a reply
   const replyToMessage = ctx.message.reply_to_message;
@@ -43,4 +43,10 @@ module.exports = Composer.command(getCommandName("sendmoney"), async (ctx) => {
   await setUser({ user: targetUserEntity });
 
   return ctx.reply(`✅ Successfully sent ${moneyAmount} MMK to ${targetUser.first_name || 'user'}.`);
-});
+};
+
+const composer = new Composer();
+composer.command("mgift", sendMoneyHandler);
+composer.command("sendmoney", sendMoneyHandler); // Keep old one just in case
+
+module.exports = composer;

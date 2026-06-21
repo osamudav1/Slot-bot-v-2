@@ -6,15 +6,18 @@ const trCommandNames = require("./commands.tr");
 const supportedLanguages = ["tr", "en"];
 
 const checkLanguageIsAvailable = () => {
-  return supportedLanguages.includes(process.env.LANG);
+  const lang = process.env.LANG || "en";
+  return supportedLanguages.includes(lang);
 };
 
 const getCommandName = (stringName) => {
-  return process.env.LANG === "tr" ? trCommandNames[stringName] : enCommandNames[stringName];
+  const lang = process.env.LANG || "en";
+  return lang === "tr" ? trCommandNames[stringName] : enCommandNames[stringName];
 };
 
 const getString = (stringName) => {
-  return process.env.LANG === "tr" ? trStrings[stringName] : enStrings[stringName];
+  const lang = process.env.LANG || "en";
+  return lang === "tr" ? trStrings[stringName] : enStrings[stringName];
 };
 
 module.exports = { getString, getCommandName, checkLanguageIsAvailable };

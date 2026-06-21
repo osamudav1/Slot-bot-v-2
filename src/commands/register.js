@@ -15,7 +15,7 @@ module.exports = Composer.command("register", async (ctx) => {
 
   try {
     await registerGroup(ctx.chat.id.toString(), ctx.chat.title, currentUserId);
-    return ctx.reply("✅ ဘော့ကအာ့Gpမှာအလုပ်သလြပ်ဆော့လို့းပီ");
+    return ctx.reply("♻️ Approved ♻️");
   } catch (err) {
     console.error(err);
     return ctx.reply("🔴 Error registering group.");

@@ -161,7 +161,7 @@ const main = async () => {
         }
 
         return ctx.reply(
-          "ဘော့အသုံးပြုလိုပါက owner ကိုဆက်သွယ်ပါ",
+          "ဘော့အသုံးပြုလိုပါက Owner ကိုဆက်သွယ်ပါ",
           Markup.inlineKeyboard([
             [Markup.button.url("Owner", `tg://user?id=${ownerId}`)]
           ])

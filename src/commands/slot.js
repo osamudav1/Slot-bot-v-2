@@ -64,11 +64,10 @@ const slotHandler = async (ctx) => {
     // Show lightning emoji first
     const waitMsg = await ctx.reply("⚡️");
 
-    const getDesign = (s1, s2, s3, bet = "", win = "", profit = "", status = "") => {
-        return `🎰 GUESS SLOT V1.0\n✦ ━━━━━━━━━━━ ✦\n\n┏━━━━━━━━━━━┓\n┃   ${s1}     |      ${s2}   |    ${s3}   ┃\n┗━━━━━━━━━━━┛\n\n✦ ━━━━━━━━━━━ ✦\n🎰 SLOT DETAILS\n✦ ━━━━━━━━━━━ ✦\n💵 Bet     : ${bet} MMK\n💰 Win     : ${win} MMK\n📊 Profit  : ${profit} MMK [${status}]\n✦ ━━━━━━━━━━━ ✦`;
+    const getDesign = (s1, s2, s3, s4, bet = "", win = "", profit = "", status = "") => {
+        return `🎰 GUESS SLOT V1.0\n✦ ━━━━━━━━━━━ ✦\n\n┏━━━━━━━━━━━━━┓\n┃ ${s1} | ${s2} | ${s3} | ${s4} ┃\n┗━━━━━━━━━━━━━┛\n\n✦ ━━━━━━━━━━━ ✦\n🎰 SLOT DETAILS\n✦ ━━━━━━━━━━━ ✦\n💵 Bet     : ${bet} MMK\n💰 Win     : ${win} MMK\n📊 Profit  : ${profit} MMK [${status}]\n✦ ━━━━━━━━━━━ ✦`;
     };
 
-    // Fruits with their triple multipliers (max 10x)
     const fruitRewards = {
         "🍒": 3, "🍎": 4, "🍐": 4, "🍉": 5, "🍊": 5, 
         "🍌": 6, "🍇": 6, "🍓": 7, "🫐": 7, "🍈": 8, 
@@ -77,42 +76,62 @@ const slotHandler = async (ctx) => {
     const slots = Object.keys(fruitRewards);
     const jackpotEmoji = "💎";
 
-    const percentages = global.slotPercentages || { W: 55, L: 40, J: 5 };
+    const percentages = global.slotPercentages || { W: 45, L: 52, J: 3 }; // Lowered win rates for 4 columns
     const random = Math.random() * 100;
 
-    let result1, result2, result3;
+    let result1, result2, result3, result4;
     let winMultiplier = 0;
     let status = "Lose";
 
     if (random < percentages.J) {
-        result1 = result2 = result3 = jackpotEmoji;
-        winMultiplier = 25; // Jackpot is 25x
+        // Jackpot Case: 4 diamonds
+        result1 = result2 = result3 = result4 = jackpotEmoji;
+        winMultiplier = 25;
         status = "Jackpot";
     } else if (random < percentages.J + percentages.W) {
-        const isTriple = Math.random() > 0.8;
-        if (isTriple) {
+        // Win Case: Could be 4-of-a-kind, 3-of-a-kind, or 2-of-a-kind
+        const winType = Math.random() * 100;
+        
+        if (winType < 10) { 
+            // 4-of-a-kind (Quadruple)
+            const sym = slots[Math.floor(Math.random() * slots.length)];
+            result1 = result2 = result3 = result4 = sym;
+            winMultiplier = 15;
+            status = "Win (4x)";
+        } else if (winType < 40) {
+            // 3-of-a-kind (Triple)
             const sym = slots[Math.floor(Math.random() * slots.length)];
             result1 = result2 = result3 = sym;
-            winMultiplier = fruitRewards[sym] || 5; // Use fruit based multiplier (max 10x)
-        } else {
-            const sym = slots[Math.floor(Math.random() * slots.length)];
-            result1 = result2 = sym;
             let other;
             do {
                 other = slots[Math.floor(Math.random() * slots.length)];
             } while (other === sym);
-            result3 = other;
-            winMultiplier = 2; // Double win is 2x
+            result4 = other;
+            winMultiplier = fruitRewards[sym] || 5;
+            status = "Win (3x)";
+        } else {
+            // 2-of-a-kind (Double)
+            const sym = slots[Math.floor(Math.random() * slots.length)];
+            result1 = result2 = sym;
+            let other1, other2;
+            do {
+                other1 = slots[Math.floor(Math.random() * slots.length)];
+            } while (other1 === sym);
+            do {
+                other2 = slots[Math.floor(Math.random() * slots.length)];
+            } while (other2 === sym || other2 === other1);
+            result3 = other1;
+            result4 = other2;
+            winMultiplier = 2;
+            status = "Win (2x)";
         }
-        status = "Win";
     } else {
-        result1 = slots[Math.floor(Math.random() * slots.length)];
-        do {
-            result2 = slots[Math.floor(Math.random() * slots.length)];
-        } while (result2 === result1);
-        do {
-            result3 = slots[Math.floor(Math.random() * slots.length)];
-        } while (result3 === result1 || result3 === result2);
+        // Lose Case: All different or no significant matches
+        const shuffled = [...slots].sort(() => 0.5 - Math.random());
+        result1 = shuffled[0];
+        result2 = shuffled[1];
+        result3 = shuffled[2];
+        result4 = shuffled[3];
         winMultiplier = 0;
         status = "Lose";
     }
@@ -139,7 +158,7 @@ const slotHandler = async (ctx) => {
                 ctx.chat.id,
                 waitMsg.message_id,
                 null,
-                getDesign(result1, result2, result3, betAmount, winAmount, profitText, status)
+                getDesign(result1, result2, result3, result4, betAmount, winAmount, profitText, status)
             ).catch(err => logger.error("Edit result error: " + err.message));
         } catch (err) {
             logger.error("Timeout result error: " + err.message);

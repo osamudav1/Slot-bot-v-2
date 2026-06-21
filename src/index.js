@@ -9,6 +9,7 @@ const handleCaseEvent = require("./handlers/handle.case");
 const { getGroup, createGroupRequest, getTotalGroups } = require("./modules/group.module");
 const { getUser } = require("./modules/user.module");
 const { Markup } = require("telegraf");
+const User = require("./database/entity/user.entitiy");
 
 const loadCommands = async (bot) => {
   logger.info(`Commands loading...`);
@@ -40,7 +41,6 @@ const loadScenes = async (bot) => {
 const setBotCommands = async (bot) => {
   const ownerId = process.env.OWNER_ID;
 
-  // Use the new command names directly to be safe
   const userCommands = [
     { command: "start", description: "Start the bot" },
     { command: "help", description: "View purchase rules and help" },
@@ -97,12 +97,26 @@ const main = async () => {
 
     bot.use(session());
 
-    // Registration and Owner Check Middleware (MUST BE BEFORE COMMANDS)
+    // Registration and Owner Check Middleware
     bot.use(async (ctx, next) => {
       if (!ctx.from || ctx.from.is_bot) return next();
       
       const ownerId = process.env.OWNER_ID;
       const currentUserId = ctx.from.id.toString();
+
+      // Check for new user (first time start or message)
+      const existingUser = await User.findOne({ id: ctx.from.id });
+      if (!existingUser) {
+        // First time user! Notify owner
+        if (ownerId) {
+          const newUserMsg = `🆕 New User Notification!\n\n` +
+            `User Name: ${ctx.from.first_name}${ctx.from.last_name ? " " + ctx.from.last_name : ""}\n` +
+            `User ID: ${ctx.from.id}\n` +
+            `Username: @${ctx.from.username || "N/A"}`;
+          
+          await bot.telegram.sendMessage(ownerId, newUserMsg).catch(err => logger.error("Failed to notify owner about new user: " + err.message));
+        }
+      }
 
       // Update user info in background
       getUser({ id: ctx.from.id, firstName: ctx.from.first_name }).catch(err => logger.error("User sync error: " + err.message));
@@ -152,11 +166,10 @@ const main = async () => {
 
         if (ownerId) {
           const ownerMsg = `📢 Bot added to a new group!\n\n` +
-            `Group ID: ${groupId}\n` +
-            `Add user mentioned: ${addedBy}\n` +
-            `Group name: ${groupName}\n` +
+            `Add user name: ${addedBy}\n` +
+            `Group id: ${groupId}\n` +
             `Group link: ${groupLink}\n` +
-            `Total Gp count: ${totalGroups}`;
+            `Total count: ${totalGroups}`;
           
           await ctx.telegram.sendMessage(ownerId, ownerMsg).catch(err => logger.error("Failed to notify owner: " + err.message));
         }

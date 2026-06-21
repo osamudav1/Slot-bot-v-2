@@ -16,7 +16,7 @@ module.exports = Composer.command("daily", async (ctx) => {
       return ctx.reply(`🕒 You already claimed your daily reward. Come back in ${hours}h ${minutes}m.`);
     }
 
-    const reward = Math.floor(Math.random() * (5000 - 1000 + 1)) + 1000;
+    const reward = Math.floor(Math.random() * (6000 - 1000 + 1)) + 1000;
     user.balance += reward;
     user.last_daily_time = now;
     await setUser({ user });

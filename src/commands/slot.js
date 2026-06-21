@@ -53,6 +53,9 @@ const slotHandler = async (ctx) => {
 
     activeSpins.add(userId);
 
+    // Show lightning emoji first
+    const waitMsg = await ctx.reply("⚡️");
+
     const getDesign = (s1, s2, s3, bet = "", win = "", profit = "", status = "") => {
         return `🎰 GUESS SLOT V1.0\n✦ ━━━━━━━━━━━ ✦\n\n┏━━━━━━━━━━━┓\n┃   ${s1}     |      ${s2}   |    ${s3}   ┃\n┗━━━━━━━━━━━┛\n\n✦ ━━━━━━━━━━━ ✦\n🎰 SLOT DETAILS\n✦ ━━━━━━━━━━━ ✦\n💵 Bet     : ${bet} MMK\n💰 Win     : ${win} MMK\n📊 Profit  : ${profit} MMK [${status}]\n✦ ━━━━━━━━━━━ ✦`;
     };
@@ -116,14 +119,26 @@ const slotHandler = async (ctx) => {
 
     const profitText = profit >= 0 ? `+${profit}` : `${profit}`;
 
-    // Send result immediately
-    await ctx.reply(getDesign(result1, result2, result3, betAmount, winAmount, profitText, status)).catch(err => logger.error("Reply error: " + err.message));
+    // Wait for 1.5 seconds, then edit the lightning emoji message with results
+    setTimeout(async () => {
+        try {
+            await ctx.telegram.editMessageText(
+                ctx.chat.id,
+                waitMsg.message_id,
+                null,
+                getDesign(result1, result2, result3, betAmount, winAmount, profitText, status)
+            ).catch(err => logger.error("Edit result error: " + err.message));
+        } catch (err) {
+            logger.error("Timeout result error: " + err.message);
+        } finally {
+            activeSpins.delete(userId);
+        }
+    }, 1500);
 
   } catch (err) {
     logger.error("Slot handler error: " + err.stack);
-    return ctx.reply(getString("DATABASE_LOCK")).catch(() => {});
-  } finally {
     activeSpins.delete(userId);
+    return ctx.reply(getString("DATABASE_LOCK")).catch(() => {});
   }
 };
 

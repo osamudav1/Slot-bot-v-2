@@ -68,7 +68,13 @@ const slotHandler = async (ctx) => {
         return `🎰 GUESS SLOT V1.0\n✦ ━━━━━━━━━━━ ✦\n\n┏━━━━━━━━━━━┓\n┃   ${s1}     |      ${s2}   |    ${s3}   ┃\n┗━━━━━━━━━━━┛\n\n✦ ━━━━━━━━━━━ ✦\n🎰 SLOT DETAILS\n✦ ━━━━━━━━━━━ ✦\n💵 Bet     : ${bet} MMK\n💰 Win     : ${win} MMK\n📊 Profit  : ${profit} MMK [${status}]\n✦ ━━━━━━━━━━━ ✦`;
     };
 
-    const slots = ["🍒", "🍎", "🍐", "🍉", "🍊", "🍌", "🍇", "🍓", "🫐", "🍈", "🍍", "🥭", "🍑", "🍒", "🥝"];
+    // Fruits with their triple multipliers (max 10x)
+    const fruitRewards = {
+        "🍒": 3, "🍎": 4, "🍐": 4, "🍉": 5, "🍊": 5, 
+        "🍌": 6, "🍇": 6, "🍓": 7, "🫐": 7, "🍈": 8, 
+        "🍍": 8, "🥭": 9, "🍑": 9, "🥝": 10
+    };
+    const slots = Object.keys(fruitRewards);
     const jackpotEmoji = "💎";
 
     const percentages = global.slotPercentages || { W: 55, L: 40, J: 5 };
@@ -80,15 +86,14 @@ const slotHandler = async (ctx) => {
 
     if (random < percentages.J) {
         result1 = result2 = result3 = jackpotEmoji;
-        winMultiplier = 100;
+        winMultiplier = 25; // Jackpot is 25x
         status = "Jackpot";
     } else if (random < percentages.J + percentages.W) {
         const isTriple = Math.random() > 0.8;
         if (isTriple) {
             const sym = slots[Math.floor(Math.random() * slots.length)];
             result1 = result2 = result3 = sym;
-            const multipliers = [10, 20, 32, 64, 80];
-            winMultiplier = multipliers[Math.floor(Math.random() * multipliers.length)];
+            winMultiplier = fruitRewards[sym] || 5; // Use fruit based multiplier (max 10x)
         } else {
             const sym = slots[Math.floor(Math.random() * slots.length)];
             result1 = result2 = sym;
@@ -97,7 +102,7 @@ const slotHandler = async (ctx) => {
                 other = slots[Math.floor(Math.random() * slots.length)];
             } while (other === sym);
             result3 = other;
-            winMultiplier = Math.floor(Math.random() * 4) + 2;
+            winMultiplier = 2; // Double win is 2x
         }
         status = "Win";
     } else {

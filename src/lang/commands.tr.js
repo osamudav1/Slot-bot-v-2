@@ -4,7 +4,7 @@ const commands = {
   case: "kasa",
   centralbank: "merkezbankasi",
   items: "esyalar",
-  market: "market",
+  market: "gmarket",
   salary: "maas",
   ranking: "enzengin",
   sendmoney: "paragonder",

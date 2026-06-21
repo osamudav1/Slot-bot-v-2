@@ -4,7 +4,7 @@ const commands = {
   case: "case",
   centralbank: "centralbank",
   items: "items",
-  market: "market",
+  market: "gmarket",
   salary: "salary",
   ranking: "ranking",
   sendmoney: "sendmoney",

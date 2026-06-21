@@ -4,16 +4,14 @@ const { getString, getCommandName } = require("../lang/index");
 const User = require("../database/entity/user.entitiy");
 const logger = require("../logger");
 
-// Simple in-memory lock to prevent concurrent spins for the same user
 const activeSpins = new Set();
 
 const slotHandler = async (ctx) => {
   try {
     const ownerId = process.env.OWNER_ID;
     const currentUserId = ctx.from.id.toString();
-
     const text = ctx.message.text || "";
-    // Owner can send W 60% L 30% J 10% to set percentages
+
     if (ownerId && currentUserId === ownerId && text.includes("W") && text.includes("L") && text.includes("J")) {
         const wMatch = text.match(/W\s*(\d+)%/);
         const lMatch = text.match(/L\s*(\d+)%/);
@@ -29,7 +27,6 @@ const slotHandler = async (ctx) => {
         }
     }
 
-    // Prevent multiple concurrent spins for the same user
     if (activeSpins.has(ctx.from.id)) {
         return ctx.reply("Please wait for your current spin to finish!").catch(() => {});
     }
@@ -41,7 +38,6 @@ const slotHandler = async (ctx) => {
       return ctx.reply("Usage: /slot <amount> or .slot <amount>");
     }
 
-    // Atomic check and decrement of balance
     const user = await User.findOneAndUpdate(
       { id: ctx.from.id, balance: { $gte: betAmount } },
       { $inc: { balance: -betAmount } },
@@ -52,20 +48,27 @@ const slotHandler = async (ctx) => {
       return ctx.reply(getString("NO_BALANCE"));
     }
 
-    // Mark user as actively spinning
     activeSpins.add(ctx.from.id);
 
-    // Send waiting status
-    const waitMsg = await ctx.reply("🎰 Spinning...");
+    // Initial message with lightning emoji
+    const waitMsg = await ctx.reply("⚡️");
+    
+    // Auto-delete lightning emoji after 1s and start spinning
+    setTimeout(async () => {
+        try {
+            await ctx.telegram.deleteMessage(ctx.chat.id, waitMsg.message_id).catch(() => {});
+        } catch (e) {}
+    }, 1000);
+
+    const spinMsg = await ctx.reply("🎰 Spinning...");
 
     const getDesign = (s1, s2, s3, bet = "", win = "", profit = "", status = "") => {
-        return `🎰 GUESS SLOT V1.0\n✦ ━━━━━━━━━━━ ✦\n\n┏━━━━━━━━━━━┓\n┃   ${s1}     |      ${s2}   |    ${s3}   ┃\n┗━━━━━━━━━━━┛\n\n✦ ━━━━━━━━━━━ ✦\n🎰 SLOT DETAILS\n✦ ━━━━━━━━━━━ ✦\n💵 Bet     : ${bet}\n💰 Win     : ${win}\n📊 Profit  : ${profit} [${status}]\n✦ ━━━━━━━━━━━ ✦`;
+        return `🎰 GUESS SLOT V1.0\n✦ ━━━━━━━━━━━ ✦\n\n┏━━━━━━━━━━━┓\n┃   ${s1}     |      ${s2}   |    ${s3}   ┃\n┗━━━━━━━━━━━┛\n\n✦ ━━━━━━━━━━━ ✦\n🎰 SLOT DETAILS\n✦ ━━━━━━━━━━━ ✦\n💵 Bet     : ${bet} MMK\n💰 Win     : ${win} MMK\n📊 Profit  : ${profit} MMK [${status}]\n✦ ━━━━━━━━━━━ ✦`;
     };
 
     const slots = ["🍒", "🍎", "🍐", "🍉", "🍊", "🍌", "🍇", "🍓", "🫐", "🍈", "🍍", "🥭", "🍑", "🍒", "🥝"];
     const jackpotEmoji = "💎";
 
-    // Use default or custom percentages
     const percentages = global.slotPercentages || { W: 55, L: 40, J: 5 };
     const random = Math.random() * 100;
 
@@ -74,17 +77,14 @@ const slotHandler = async (ctx) => {
     let status = "Lose";
 
     if (random < percentages.J) {
-        // Jackpot: J 5% -> 100x
         result1 = result2 = result3 = jackpotEmoji;
         winMultiplier = 100;
         status = "Jackpot";
     } else if (random < percentages.J + percentages.W) {
-        // Win: W 55%
         const isTriple = Math.random() > 0.8;
         if (isTriple) {
             const sym = slots[Math.floor(Math.random() * slots.length)];
             result1 = result2 = result3 = sym;
-            // Triple fruits: 10x to 64x
             const multipliers = [10, 20, 32, 64, 80];
             winMultiplier = multipliers[Math.floor(Math.random() * multipliers.length)];
         } else {
@@ -95,12 +95,10 @@ const slotHandler = async (ctx) => {
                 other = slots[Math.floor(Math.random() * slots.length)];
             } while (other === sym);
             result3 = other;
-            // Double fruits: 2x to 5x
             winMultiplier = Math.floor(Math.random() * 4) + 2;
         }
         status = "Win";
     } else {
-        // Lose: L 40%
         result1 = slots[Math.floor(Math.random() * slots.length)];
         do {
             result2 = slots[Math.floor(Math.random() * slots.length)];
@@ -115,7 +113,6 @@ const slotHandler = async (ctx) => {
     const winAmount = betAmount * winMultiplier;
     const profit = winAmount - betAmount;
 
-    // Animation: 3 steps of spinning
     let animCount = 0;
     const animationInterval = setInterval(async () => {
         const r1 = slots[Math.floor(Math.random() * slots.length)];
@@ -124,7 +121,7 @@ const slotHandler = async (ctx) => {
         
         await ctx.telegram.editMessageText(
             ctx.chat.id,
-            waitMsg.message_id,
+            spinMsg.message_id,
             null,
             getDesign(r1, r2, r3, betAmount, "Spinning...", "...", "Spinning")
         ).catch(() => {});
@@ -133,7 +130,6 @@ const slotHandler = async (ctx) => {
         if (animCount >= 3) clearInterval(animationInterval);
     }, 600);
 
-    // Final result after 2.2 seconds
     setTimeout(async () => {
       clearInterval(animationInterval);
       
@@ -150,12 +146,11 @@ const slotHandler = async (ctx) => {
 
       await ctx.telegram.editMessageText(
         ctx.chat.id,
-        waitMsg.message_id,
+        spinMsg.message_id,
         null,
         getDesign(result1, result2, result3, betAmount, winAmount, profitText, status)
       ).catch(err => logger.error(err));
 
-      // Remove user from active spins
       activeSpins.delete(ctx.from.id);
     }, 2200);
 
@@ -167,14 +162,8 @@ const slotHandler = async (ctx) => {
 };
 
 const composer = new Composer();
-
-// Handle /slot
 composer.command(getCommandName("slot"), slotHandler);
-
-// Handle .slot
 composer.hears(/^\.slot(\s+.*)?$/, slotHandler);
-
-// Handle owner setting percentages (W 60% L 30% J 10%)
 composer.hears(/W\s*\d+%\s*L\s*\d+%\s*J\s*\d+%/, slotHandler);
 
 module.exports = composer;

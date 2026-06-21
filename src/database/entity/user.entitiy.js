@@ -14,6 +14,10 @@ const userSchema = new mongoose.Schema({
     type: Number,
     default: 0,
   },
+  last_daily_time: {
+    type: Number,
+    default: 0,
+  },
   case: {
     type: Boolean,
     default: false,

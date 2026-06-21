@@ -54,10 +54,10 @@ const giveSalaryToUser = async ({ ctx }) => {
 
     if (Date.now() - user?.last_payback_time <= limitAsMs) return await ctx.reply(getString("SALARY_ERROR"));
 
-    user.balance = user?.balance + 1;
+    user.balance = user?.balance + 1000;
     user.last_payback_time = Date.now();
 
-    await decreaseBankAmount({ ctx, decreaseAmont: 1 });
+    await decreaseBankAmount({ ctx, decreaseAmont: 1000 });
     await setUser({ user });
     return await ctx.reply(getString("SALARY_OK"));
   } catch (err) {

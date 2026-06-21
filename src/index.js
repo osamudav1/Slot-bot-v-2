@@ -41,6 +41,7 @@ const setBotCommands = async (bot) => {
     { command: getCommandName("salary"), description: "Get your salary" },
     { command: getCommandName("slot"), description: "Play slot machine" },
     { command: getCommandName("market"), description: "View market items" },
+    { command: "daily", description: "Claim your daily reward" },
     { command: getCommandName("sendmoney"), description: "Send money (Reply to user)" },
     { command: getCommandName("ranking"), description: "View top players" },
     { command: getCommandName("centralbank"), description: "View central bank" },

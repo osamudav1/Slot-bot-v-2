@@ -36,8 +36,16 @@ const slotHandler = async (ctx) => {
     const args = text.split(" ");
     const betAmount = args[1] ? parseInt(args[1]) : 1000;
 
-    if (isNaN(betAmount) || betAmount <= 0) {
+    if (isNaN(betAmount)) {
       return ctx.reply("Usage: /slot <amount> or .slot <amount>");
+    }
+
+    // Enforce betting limits
+    if (betAmount < 500) {
+      return ctx.reply("🔴 အနည်းဆုံး 500 MMK လောင်းရပါမည်။");
+    }
+    if (betAmount > 200000) {
+      return ctx.reply("🔴 အများဆုံး 200,000 MMK ထိသာ လောင်းနိုင်ပါသည်။");
     }
 
     // Atomic update to check and deduct balance

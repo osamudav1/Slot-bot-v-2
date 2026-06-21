@@ -7,7 +7,7 @@ const commands = {
   market: "gmarket",
   salary: "salary",
   ranking: "ranking",
-  sendmoney: "sendmoney",
+  sendmoney: "mgift",
   slot: "slot",
   add: "add",
 };

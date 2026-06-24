@@ -133,10 +133,10 @@ const resolveGame = async (ctx, gameKey, botInstantReveal = false, isTimeout = f
   game.status = "resolved";
   activeGames.delete(gameKey);
 
-  // Bot AI: Draw if points <= 5 and not a Shan 8/9
+  // Bot AI: Draw if points are 3, 4, or 5 and not a Shan 8/9
   let botInitialPoints = calculatePoints(game.botHand);
   let botDrew = false;
-  if (botInitialPoints <= 5) {
+  if (botInitialPoints >= 3 && botInitialPoints <= 5) {
     game.botHand.push(game.deck.pop());
     botDrew = true;
   }

@@ -133,6 +133,14 @@ const resolveGame = async (ctx, gameKey, botInstantReveal = false, isTimeout = f
   game.status = "resolved";
   activeGames.delete(gameKey);
 
+  // Bot AI: Draw if points <= 5 and not a Shan 8/9
+  let botInitialPoints = calculatePoints(game.botHand);
+  let botDrew = false;
+  if (botInitialPoints <= 5) {
+    game.botHand.push(game.deck.pop());
+    botDrew = true;
+  }
+
   const userPoints = calculatePoints(game.userHand);
   const botPoints = calculatePoints(game.botHand);
 
@@ -140,9 +148,13 @@ const resolveGame = async (ctx, gameKey, botInstantReveal = false, isTimeout = f
   let winAmount = 0;
 
   if (botInstantReveal) {
-    resultText = `⚠️ Bot မှာ ${botPoints} မှတ် (ရှမ်း) ရနေသဖြင့် တန်းဖွင့်လိုက်ပါပြီ!`;
+    resultText = `⚠️ Bot မှာ ${botInitialPoints} မှတ် (ရှမ်း) ရနေသဖြင့် တန်းဖွင့်လိုက်ပါပြီ!`;
   } else if (isTimeout) {
     resultText = `⏰ အချိန်ကျော်သွားသဖြင့် အလိုအလျောက် ဖွင့်လိုက်ပါပြီ။`;
+  }
+
+  if (botDrew && !botInstantReveal) {
+    resultText += `\n🤖 Bot က ကဒ်တစ်ကဒ် ထပ်ဆွဲထားပါသည်။`;
   }
 
   if (userPoints > botPoints) {
@@ -192,21 +204,9 @@ composer.action(/^shan_draw_(\d+)$/, async (ctx) => {
   if (game.userHand.length >= 3) return ctx.answerCbQuery("ကဒ် ၃ ကဒ်ထက် ပိုဆွဲ၍မရပါ!");
 
   game.userHand.push(game.deck.pop());
-  const userPoints = calculatePoints(game.userHand);
   
-  // Update game message or resolve
-  const gameMsg = `🃏 *SHAN KO MEE* 🃏\n` +
-    `━━━━━━━━━━━━━\n` +
-    `👤 User: ${formatHand(game.userHand)} (${userPoints} မှတ်)\n` +
-    `🤖 Bot: 🎴 🎴\n` +
-    `━━━━━━━━━━━━━\n` +
-    `💵 လောင်းကြေး: ${game.betAmount} MMK\n\n` +
-    `ကဒ် ၃ ကဒ်ပြည့်သွားပါပြီ။`;
-
-  await ctx.editMessageText(gameMsg, {
-    parse_mode: "Markdown",
-    ...Markup.inlineKeyboard([[Markup.button.callback("အဖြေကြည့်မယ် 🔍", `shan_stand_${userId}`)]])
-  }).catch(() => {});
+  // Auto-resolve after 3rd card
+  await resolveGame(ctx, gameKey);
   
   ctx.answerCbQuery();
 });

@@ -47,6 +47,7 @@ const setBotCommands = async (bot) => {
     { command: getCommandName("bank") || "bank", description: "Check your balance" },
     { command: getCommandName("salary") || "salary", description: "Get your salary" },
     { command: getCommandName("slot") || "slot", description: "Play slot machine" },
+    { command: getCommandName("shan") || "shan", description: "Play Shan Ko Mee" },
     { command: "gmarket", description: "View market items" },
     { command: "daily", description: "Claim your daily reward" },
     { command: "mgift", description: "Send money (Reply to user)" },

@@ -10,6 +10,7 @@ const commands = {
   sendmoney: "mgift",
   slot: "slot",
   add: "add",
+  shan: "shan",
 };
 
 module.exports = commands;

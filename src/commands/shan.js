@@ -148,26 +148,22 @@ const resolveGame = async (ctx, gameKey, botInstantReveal = false, isTimeout = f
   let winAmount = 0;
 
   if (botInstantReveal) {
-    resultText = `⚠️ Bot မှာ ${botInitialPoints} မှတ် (ရှမ်း) ရနေသဖြင့် တန်းဖွင့်လိုက်ပါပြီ!`;
+    resultText = `Bot Shan ${botInitialPoints} - Auto Result`;
   } else if (isTimeout) {
-    resultText = `⏰ အချိန်ကျော်သွားသဖြင့် အလိုအလျောက် ဖွင့်လိုက်ပါပြီ။`;
-  }
-
-  if (botDrew && !botInstantReveal) {
-    resultText += `\n🤖 Bot က ကဒ်တစ်ကဒ် ထပ်ဆွဲထားပါသည်။`;
+    resultText = `Time Out - Auto Result`;
   }
 
   if (userPoints > botPoints) {
     winAmount = game.betAmount * 2;
-    resultText += `\n\n🎉 သင်နိုင်ပါသည်! +${winAmount} MMK`;
+    resultText += `\n\nUser Win +${winAmount} MMK`;
     await User.findOneAndUpdate({ id: game.userId }, { $inc: { balance: winAmount } });
     await decreaseBankAmount({ ctx, decreaseAmont: winAmount - game.betAmount }).catch(() => {});
   } else if (userPoints < botPoints) {
-    resultText += `\n\n💸 Bot နိုင်ပါသည်! -${game.betAmount} MMK`;
+    resultText += `\n\nBot Win -${game.betAmount} MMK`;
     await increaseBankAmount({ ctx, increaseAmount: game.betAmount }).catch(() => {});
   } else {
     winAmount = game.betAmount;
-    resultText += `\n\n🤝 သရေကျပါသည်။ လောင်းကြေးပြန်ရပါမည်။`;
+    resultText += `\n\nDraw - Refund ${winAmount} MMK`;
     await User.findOneAndUpdate({ id: game.userId }, { $inc: { balance: winAmount } });
   }
 

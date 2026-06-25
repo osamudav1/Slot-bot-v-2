@@ -82,6 +82,9 @@ const setBotCommands = async (bot) => {
 const main = async () => {
   dotenv.config();
 
+  // 🆕 BOT START TIME - မက်ဆေ့ခ်ျဟောင်းတွေကို စစ်ထုတ်ဖို့
+  const BOT_START_TIME = Date.now();
+
   const app = express();
   const PORT = process.env.PORT || 3000;
   app.get("/", (req, res) => res.status(200).send("OK"));
@@ -199,13 +202,22 @@ const main = async () => {
     await loadCommands(bot);
     await setBotCommands(bot);
 
+    // 🆕 MESSAGE HANDLER - မက်ဆေ့ခ်ျဟောင်းတွေကို စစ်ထုတ်မယ်
     bot.on("message", async (ctx) => {
+      // Bot စတင်ချိန်ထက် စောတဲ့ မက်ဆေ့ခ်ျတွေကို ignore လုပ်
+      if (ctx.message.date * 1000 < BOT_START_TIME) {
+        logger.info(`⏭️ Skipping old message from ${ctx.from.id} (${ctx.message.date})`);
+        return;
+      }
       await handleCaseEvent(ctx);
     });
 
-    await bot.launch(() => {
-      logger.success("Telegram bot started");
+    // 🆕 LAUNCH - pending updates တွေကို ရှင်းပစ်မယ်
+    await bot.launch({
+      dropPendingUpdates: true
     });
+
+    logger.success("Telegram bot started");
 
     process.once("SIGINT", () => {
       bot.stop("SIGINT");

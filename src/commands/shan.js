@@ -55,8 +55,8 @@ const shanHandler = async (ctx) => {
     if (betAmount < 500) {
       return ctx.reply("🔴 အနည်းဆုံး 500 MMK လောင်းရပါမည်။");
     }
-    if (betAmount > 200000) {
-      return ctx.reply("🔴 အများဆုံး 200,000 MMK ထိသာ လောင်းနိုင်ပါသည်။");
+    if (betAmount > 15000) {
+      return ctx.reply("🔴 အများဆုံး 15,000 MMK ထိသာ လောင်းနိုင်ပါသည်။");
     }
 
     const user = await User.findOneAndUpdate(

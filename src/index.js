@@ -91,9 +91,9 @@ const main = async () => {
     logger.success(`Health check server is running on port ${PORT}`);
   });
 
-  try {
-    await connectDB();
+  connectDB().catch(err => logger.error("Initial DB connection failed: " + err.message));
 
+  try {
     const bot = new Telegraf(process.env.TELEGRAM_BOT_TOKEN);
 
     bot.use(session());

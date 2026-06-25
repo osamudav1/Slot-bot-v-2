@@ -1,5 +1,5 @@
 services:
-  - type: worker
+  - type: web
     name: slot-bot-v2
     env: node
     buildCommand: npm install
@@ -11,3 +11,4 @@ services:
         value: 20
       - key: TELEGRAM_BOT_TOKEN
         sync: false
+    healthCheckPath: /health

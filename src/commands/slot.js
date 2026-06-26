@@ -68,15 +68,11 @@ const slotHandler = async (ctx) => {
         return `🎰 GUESS SLOT V1.0\n✦ ━━━━━━━━━━━ ✦\n\n┏━━━━━━━━━━━━━┓\n┃ ${s1} | ${s2} | ${s3} | ${s4} ┃\n┗━━━━━━━━━━━━━┛\n\n✦ ━━━━━━━━━━━ ✦\n🎰 SLOT DETAILS\n✦ ━━━━━━━━━━━ ✦\n💵 Bet     : ${bet} MMK\n💰 Win     : ${win} MMK\n📊 Profit  : ${profit} MMK [${status}]\n✦ ━━━━━━━━━━━ ✦`;
     };
 
-    const fruitRewards = {
-        "🍒": 3, "🍎": 4, "🍐": 4, "🍉": 5, "🍊": 5, 
-        "🍌": 6, "🍇": 6, "🍓": 7, "🫐": 7, "🍈": 8, 
-        "🍍": 8, "🥭": 9, "🍑": 9, "🥝": 10
-    };
-    const slots = Object.keys(fruitRewards);
+    const slots = ["🍒", "🍎", "🍐", "🍉", "🍊", "🍌", "🍇", "🍓", "🫐", "🍈", "🍍", "🥭", "🍑", "🥝"];
     const jackpotEmoji = "💎";
 
-    const percentages = global.slotPercentages || { W: 45, L: 52, J: 3 }; 
+    // RTP ~90%: Win 25%, Lose 72%, Jackpot 3%
+    const percentages = global.slotPercentages || { W: 25, L: 72, J: 3 };
     const random = Math.random() * 100;
 
     let result1, result2, result3, result4;
@@ -84,21 +80,21 @@ const slotHandler = async (ctx) => {
     let status = "Lose";
 
     if (random < percentages.J) {
-        // Jackpot Case: 4 diamonds
+        // Jackpot: 4 diamonds → 10x
         result1 = result2 = result3 = result4 = jackpotEmoji;
-        winMultiplier = 25;
-        status = "Jackpot (25x)";
+        winMultiplier = 10;
+        status = "Jackpot (10x)";
     } else if (random < percentages.J + percentages.W) {
         const winType = Math.random() * 100;
-        
-        if (winType < 10) { 
-            // 4-of-a-kind (Quadruple)
+
+        if (winType < 10) {
+            // 4-of-a-kind → 6x
             const sym = slots[Math.floor(Math.random() * slots.length)];
             result1 = result2 = result3 = result4 = sym;
-            winMultiplier = 15;
+            winMultiplier = 6;
             status = `Win (${winMultiplier}x)`;
         } else if (winType < 40) {
-            // 3-of-a-kind (Triple)
+            // 3-of-a-kind → 3x
             const sym = slots[Math.floor(Math.random() * slots.length)];
             result1 = result2 = result3 = sym;
             let other;
@@ -106,10 +102,10 @@ const slotHandler = async (ctx) => {
                 other = slots[Math.floor(Math.random() * slots.length)];
             } while (other === sym);
             result4 = other;
-            winMultiplier = fruitRewards[sym] || 5;
+            winMultiplier = 3;
             status = `Win (${winMultiplier}x)`;
         } else {
-            // 2-of-a-kind (Double)
+            // 2-of-a-kind → 2x
             const sym = slots[Math.floor(Math.random() * slots.length)];
             result1 = result2 = sym;
             let other1, other2;
@@ -125,7 +121,7 @@ const slotHandler = async (ctx) => {
             status = `Win (${winMultiplier}x)`;
         }
     } else {
-        // Lose Case
+        // Lose
         const shuffled = [...slots].sort(() => 0.5 - Math.random());
         result1 = shuffled[0];
         result2 = shuffled[1];

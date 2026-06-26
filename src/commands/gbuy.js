@@ -71,7 +71,7 @@ composer.action(/^gbuy_select_(guess|catch|grab)$/, async (ctx) => {
   const botType = ctx.match[1];
   const botName = botType.charAt(0).toUpperCase() + botType.slice(1);
   
-  const text = `${botName} ဖွင့်ထားလို့နိပ်တာနက် ဘော့က လဲလှယ်လိုသောကဒ်id ပို့ပေးပါ \n\nသင့်တွင်လဲလှယ်ငွေလုံလောက်ရန်လိုပါသည် \n\nစျေးများကို /gmarket တွင်ကြည့်နိုင်ပါသည်`;
+  const text = `${botName} လဲလှယ်လိုသောကဒ်id ပို့ပေးပါ \n\nသင့်တွင်လဲလှယ်ငွေလုံလောက်ရန်လိုပါသည် \n\nစျေးများကို /gmarket တွင်ကြည့်နိုင်ပါသည်`;
   
   await ctx.editMessageText(text, Markup.inlineKeyboard([
     [Markup.button.callback("Cancel", "gbuy_cancel")]

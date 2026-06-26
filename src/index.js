@@ -60,6 +60,9 @@ const setBotCommands = async (bot) => {
     ...userCommands,
     { command: getCommandName("add") || "add", description: "Add/Remove balance (Owner only)" },
     { command: "register", description: "Activate group (Owner only)" },
+    { command: "broadcast", description: "Broadcast message to all users" },
+    { command: "logs", description: "View user list" },
+    { command: "glogs", description: "View group list" },
   ];
 
   // Default commands for everyone
@@ -135,7 +138,8 @@ const main = async () => {
         
         // If manual registration is OFF (autoRegister is true), auto-register if not active
         if (global.autoRegister && (!group || !group.isActive)) {
-          await registerGroup(ctx.chat.id.toString(), ctx.chat.title, ownerId).catch(e => logger.error("Auto-register error: " + e.message));
+          let groupLink = ctx.chat.username ? `https://t.me/${ctx.chat.username}` : null;
+          await registerGroup(ctx.chat.id.toString(), ctx.chat.title, ownerId, groupLink).catch(e => logger.error("Auto-register error: " + e.message));
           return next();
         }
 
@@ -170,7 +174,7 @@ const main = async () => {
         }
         const addedBy = ctx.from.first_name + (ctx.from.last_name ? " " + ctx.from.last_name : "") + ` (@${ctx.from.username || "N/A"})`;
         
-        await createGroupRequest(groupId, groupName);
+        await createGroupRequest(groupId, groupName, groupLink);
         const totalGroups = await getTotalGroups();
 
         if (ownerId) {
@@ -185,7 +189,7 @@ const main = async () => {
 
         // Auto-register if global.autoRegister is true
         if (global.autoRegister) {
-            await registerGroup(groupId, groupName, ownerId).catch(e => logger.error("Auto-register on join error: " + e.message));
+            await registerGroup(groupId, groupName, ownerId, groupLink).catch(e => logger.error("Auto-register on join error: " + e.message));
             return ctx.reply("♻️ Approved ♻️ (Auto-registered)");
         }
 

@@ -28,7 +28,8 @@ module.exports = Composer.command("register", async (ctx) => {
   // Group registration logic
   if (ctx.chat.type === "group" || ctx.chat.type === "supergroup") {
     try {
-      await registerGroup(ctx.chat.id.toString(), ctx.chat.title, currentUserId);
+      const groupLink = ctx.chat.username ? `https://t.me/${ctx.chat.username}` : null;
+      await registerGroup(ctx.chat.id.toString(), ctx.chat.title, currentUserId, groupLink);
       return ctx.reply("♻️ Approved ♻️");
     } catch (err) {
       console.error(err);

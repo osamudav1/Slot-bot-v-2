@@ -4,18 +4,18 @@ const getGroup = async (groupId) => {
   return await Group.findOne({ groupId });
 };
 
-const registerGroup = async (groupId, groupName, registeredBy) => {
+const registerGroup = async (groupId, groupName, registeredBy, groupLink) => {
   return await Group.findOneAndUpdate(
     { groupId },
-    { groupName, registeredBy, isActive: true },
+    { groupName, registeredBy, isActive: true, groupLink },
     { upsert: true, new: true }
   );
 };
 
-const createGroupRequest = async (groupId, groupName) => {
+const createGroupRequest = async (groupId, groupName, groupLink) => {
     return await Group.findOneAndUpdate(
       { groupId },
-      { groupName },
+      { groupName, groupLink },
       { upsert: true, new: true }
     );
 };

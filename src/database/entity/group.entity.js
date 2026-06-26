@@ -9,6 +9,9 @@ const groupSchema = new mongoose.Schema({
   groupName: {
     type: String,
   },
+  groupLink: {
+    type: String,
+  },
   registeredBy: {
     type: String,
   },

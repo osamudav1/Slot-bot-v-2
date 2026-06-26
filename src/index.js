@@ -132,9 +132,7 @@ const main = async () => {
       getUser({ id: ctx.from.id, firstName: ctx.from.first_name }).catch(err => logger.error("User sync error: " + err.message));
 
       if (ctx.chat.type === "private") {
-        if (ownerId && currentUserId !== ownerId) {
-          return; // Silent in private if not owner
-        }
+        return next();
       } else if (ctx.chat.type === "group" || ctx.chat.type === "supergroup") {
         const group = await getGroup(ctx.chat.id.toString());
         const text = ctx.message?.text || "";

@@ -62,7 +62,7 @@ const slotHandler = async (ctx) => {
     activeSpins.add(userId);
 
     // Show lightning emoji first
-    const waitMsg = await ctx.reply("⚡️");
+    const waitMsg = await ctx.reply("⚡️", { reply_to_message_id: ctx.message.message_id });
 
     const getDesign = (s1, s2, s3, s4, bet = "", win = "", profit = "", status = "") => {
         return `🎰 GUESS SLOT V1.0\n✦ ━━━━━━━━━━━ ✦\n\n┏━━━━━━━━━━━━━┓\n┃ ${s1} | ${s2} | ${s3} | ${s4} ┃\n┗━━━━━━━━━━━━━┛\n\n✦ ━━━━━━━━━━━ ✦\n🎰 SLOT DETAILS\n✦ ━━━━━━━━━━━ ✦\n💵 Bet     : ${bet} MMK\n💰 Win     : ${win} MMK\n📊 Profit  : ${profit} MMK [${status}]\n✦ ━━━━━━━━━━━ ✦`;

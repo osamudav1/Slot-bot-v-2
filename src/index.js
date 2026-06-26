@@ -54,6 +54,7 @@ const setBotCommands = async (bot) => {
     { command: getCommandName("ranking") || "ranking", description: "View top players" },
     { command: getCommandName("centralbank") || "centralbank", description: "View central bank" },
     { command: getCommandName("case") || "case", description: "Open a crate" },
+    { command: "gbuy", description: "Exchange cards" },
   ];
 
   const ownerCommands = [
@@ -63,6 +64,9 @@ const setBotCommands = async (bot) => {
     { command: "broadcast", description: "Broadcast message to all users" },
     { command: "logs", description: "View user list" },
     { command: "glogs", description: "View group list" },
+    { command: "guess", description: "Guess Bot ON/OFF" },
+    { command: "catch", description: "Catch Bot ON/OFF" },
+    { command: "grab", description: "Grab Bot ON/OFF" },
   ];
 
   // Default commands for everyone

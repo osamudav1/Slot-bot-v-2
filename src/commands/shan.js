@@ -94,12 +94,15 @@ const shanHandler = async (ctx) => {
       `💵 လောင်းကြေး: ${betAmount} MMK\n\n` +
       `ကဒ်ထပ်ဆွဲမလား သို့မဟုတ် ရပ်မလား?`;
 
-    await ctx.replyWithMarkdown(gameMsg, Markup.inlineKeyboard([
-      [
-        Markup.button.callback("ကဒ်ဆွဲမယ် ➕", `shan_draw_${userId}`),
-        Markup.button.callback("တော်ပြီ ✋", `shan_stand_${userId}`)
-      ]
-    ]));
+    await ctx.replyWithMarkdown(gameMsg, {
+      reply_to_message_id: ctx.message.message_id,
+      ...Markup.inlineKeyboard([
+        [
+          Markup.button.callback("ကဒ်ထပ်ဆွဲမယ် ➕", `shan_draw_${userId}`),
+          Markup.button.callback("တော်ပြီ ✋", `shan_stand_${userId}`)
+        ]
+      ])
+    });
 
     // Auto-reveal if bot has high points (Shan 8 or 9)
     if (botPoints >= 8) {

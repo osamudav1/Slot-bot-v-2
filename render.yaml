@@ -9,6 +9,8 @@ services:
         value: 3000
       - key: NODE_VERSION
         value: 20
+      - key: LANG
+        value: en
       - key: TELEGRAM_BOT_TOKEN
         sync: false
       - key: OWNER_ID

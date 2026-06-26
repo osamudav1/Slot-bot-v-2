@@ -8,7 +8,7 @@ const composer = new Composer();
 // Helper to get bot switch status
 const getBotStatus = async (botName) => {
   const config = await Config.findOne({ key: `bot_status_${botName}` });
-  return config ? config.value : false; // Default off
+  return config ? config.value : false;
 };
 
 // Helper to set bot switch status
@@ -16,6 +16,29 @@ const setBotStatus = async (botName, status) => {
   await Config.findOneAndUpdate(
     { key: `bot_status_${botName}` },
     { value: status },
+    { upsert: true }
+  );
+};
+
+// Daily limit helpers
+const DAILY_LIMIT = 2;
+
+const getTodayKey = (userId) => {
+  const today = new Date().toISOString().slice(0, 10);
+  return `gbuy_daily_${userId}_${today}`;
+};
+
+const getDailyCount = async (userId) => {
+  const record = await Config.findOne({ key: getTodayKey(userId) });
+  return record ? record.value : 0;
+};
+
+const incrementDailyCount = async (userId) => {
+  const key = getTodayKey(userId);
+  const current = await getDailyCount(userId);
+  await Config.findOneAndUpdate(
+    { key },
+    { value: current + 1 },
     { upsert: true }
   );
 };
@@ -56,6 +79,16 @@ composer.command("gbuy", async (ctx) => {
     );
   }
 
+  const ownerId = process.env.OWNER_ID;
+  const isOwner = ctx.from.id.toString() === ownerId;
+
+  if (!isOwner) {
+    const count = await getDailyCount(ctx.from.id);
+    if (count >= DAILY_LIMIT) {
+      return ctx.reply(`⛔️ တစ်နေ့လျှင် ${DAILY_LIMIT} ကြိမ်သာ /gbuy အသုံးပြုနိုင်ပါသည်။\n\nမနက်ဖြန် ထပ်မံသုံးနိုင်ပါမည်။`);
+    }
+  }
+
   const guessOn = await getBotStatus("guess");
   const catchOn = await getBotStatus("catch");
   const grabOn = await getBotStatus("grab");
@@ -64,14 +97,14 @@ composer.command("gbuy", async (ctx) => {
   const row1 = [];
   if (guessOn) row1.push(Markup.button.callback("Guess Bot", "gbuy_select_guess"));
   if (catchOn) row1.push(Markup.button.callback("Catch Bot", "gbuy_select_catch"));
-  
+
   const row2 = [];
   if (grabOn) row2.push(Markup.button.callback("Grab Bot", "gbuy_select_grab"));
 
   if (row1.length > 0) buttons.push(row1);
   if (row2.length > 0) buttons.push(row2);
 
-  const text = `Guess Bot မှကဒ်များသာလဲလှယ်နိုင်ပါသည် \n\nလဲလှယ်လိုသောကဒ် Id ကိုပို့ပေးပါ \n\nကဒ်များကြည့်ရန် /search ကိုအသုံးပြပါ`;
+  const text = `Guess Bot မှကဒ်များသာလဲလှယ်နိုင်ပါသည် \n\nလဲလှယ်လိုသောBot Name Button ကိုနိပ်ပါ \n\nကဒ်များကြည့်ရန် /search ကိုအသုံးပြပါ`;
 
   await ctx.reply(text, Markup.inlineKeyboard(buttons));
 });
@@ -80,18 +113,17 @@ composer.command("gbuy", async (ctx) => {
 composer.action(/^gbuy_select_(guess|catch|grab)$/, async (ctx) => {
   const botType = ctx.match[1];
   const botName = botType.charAt(0).toUpperCase() + botType.slice(1);
-  
-  const text = `${botName} လဲလှယ်လိုသောကဒ်id ပို့ပေးပါ \n\nသင့်တွင်လဲလှယ်ငွေလုံလောက်ရန်လိုပါသည် \n\nစျေးများကို /gmarket တွင်ကြည့်နိုင်ပါသည်`;
-  
+
+  const text = `${botName} လဲလှယ်လိုသောကဒ်id ပို့ပေးပါ \n\nသင့်တွင်လဲလှယ်ငွေလုံလောက်ရန်လိုပါသည် \n\nစျေးများကို /gmarket တွင်ကြည့်နိုင်ပါသည်`;
+
   await ctx.editMessageText(text, Markup.inlineKeyboard([
     [Markup.button.callback("Cancel", "gbuy_cancel")]
   ]));
-  
-  // Set user state to waiting for ID
+
   ctx.session = ctx.session || {};
   ctx.session.gbuy_step = "waiting_for_id";
   ctx.session.gbuy_type = botName;
-  
+
   await ctx.answerCbQuery();
 });
 
@@ -106,15 +138,21 @@ composer.action("gbuy_cancel", async (ctx) => {
 // Handle user sending ID
 composer.on("message", async (ctx, next) => {
   if (!ctx.session || ctx.session.gbuy_step !== "waiting_for_id") return next();
-  
+
   const requestId = ctx.message.text;
   const botType = ctx.session.gbuy_type;
   const user = await User.findOne({ id: ctx.from.id });
   const ownerId = process.env.OWNER_ID;
-  
+  const isOwner = ctx.from.id.toString() === ownerId;
+
   // Clear session
   delete ctx.session.gbuy_step;
   delete ctx.session.gbuy_type;
+
+  // Increment daily count for non-owner
+  if (!isOwner) {
+    await incrementDailyCount(ctx.from.id);
+  }
 
   // Notify User
   const mention = `[${ctx.from.first_name}](tg://user?id=${ctx.from.id})`;
@@ -131,7 +169,7 @@ composer.on("message", async (ctx, next) => {
       `User id - \`${ctx.from.id}\`\n` +
       `This user bank - ${user ? user.balance : 0} MMK\n` +
       `Request Id - \`${requestId}\``;
-    
+
     await ctx.telegram.sendMessage(ownerId, ownerMsg, {
       parse_mode: "Markdown",
       ...Markup.inlineKeyboard([
@@ -149,7 +187,7 @@ composer.action(/^gbuy_reply_(\d+)$/, async (ctx) => {
 
   ctx.session = ctx.session || {};
   ctx.session.owner_reply_to = targetUserId;
-  
+
   await ctx.reply(`Reply ပို့မည့်စာကို ရိုက်ထည့်ပေးပါ (User ID: ${targetUserId})`);
   await ctx.answerCbQuery();
 });
@@ -157,11 +195,10 @@ composer.action(/^gbuy_reply_(\d+)$/, async (ctx) => {
 // Handle owner sending reply text
 composer.on("message", async (ctx, next) => {
   if (!ctx.session || !ctx.session.owner_reply_to) return next();
-  
+
   const targetUserId = ctx.session.owner_reply_to;
   const replyText = ctx.message.text;
-  
-  // Clear session
+
   delete ctx.session.owner_reply_to;
 
   try {

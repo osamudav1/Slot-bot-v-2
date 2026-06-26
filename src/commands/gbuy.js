@@ -46,6 +46,16 @@ composer.command("grab", (ctx) => ownerBotControl(ctx, "grab"));
 
 // /gbuy command
 composer.command("gbuy", async (ctx) => {
+  if (ctx.chat.type === "group" || ctx.chat.type === "supergroup") {
+    const botUsername = ctx.botInfo.username;
+    return ctx.reply(
+      `⚠️ ဤ command ကို Bot DM တွင်သာ အသုံးပြုနိုင်ပါသည်။`,
+      Markup.inlineKeyboard([
+        [Markup.button.url("Bot DM သွားမည်", `https://t.me/${botUsername}?start=gbuy`)]
+      ])
+    );
+  }
+
   const guessOn = await getBotStatus("guess");
   const catchOn = await getBotStatus("catch");
   const grabOn = await getBotStatus("grab");

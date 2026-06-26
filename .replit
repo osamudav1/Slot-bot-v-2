@@ -39,3 +39,7 @@ outputType = "console"
 [[ports]]
 localPort = 3000
 externalPort = 3000
+
+[deployment]
+deploymentTarget = "vm"
+run = ["node", "src/index.js"]

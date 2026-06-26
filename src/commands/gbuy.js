@@ -79,16 +79,6 @@ composer.command("gbuy", async (ctx) => {
     );
   }
 
-  const ownerId = process.env.OWNER_ID;
-  const isOwner = ctx.from.id.toString() === ownerId;
-
-  if (!isOwner) {
-    const count = await getDailyCount(ctx.from.id);
-    if (count >= DAILY_LIMIT) {
-      return ctx.reply(`⛔️ တစ်နေ့လျှင် ${DAILY_LIMIT} ကြိမ်သာ /gbuy အသုံးပြုနိုင်ပါသည်။\n\nမနက်ဖြန် ထပ်မံသုံးနိုင်ပါမည်။`);
-    }
-  }
-
   const guessOn = await getBotStatus("guess");
   const catchOn = await getBotStatus("catch");
   const grabOn = await getBotStatus("grab");
@@ -144,6 +134,16 @@ composer.on("message", async (ctx, next) => {
   const user = await User.findOne({ id: ctx.from.id });
   const ownerId = process.env.OWNER_ID;
   const isOwner = ctx.from.id.toString() === ownerId;
+
+  // Check daily limit before submitting (owner has no limit)
+  if (!isOwner) {
+    const count = await getDailyCount(ctx.from.id);
+    if (count >= DAILY_LIMIT) {
+      delete ctx.session.gbuy_step;
+      delete ctx.session.gbuy_type;
+      return ctx.reply(`⛔️ တစ်နေ့လျှင် ${DAILY_LIMIT} ကြိမ်သာ request တင်နိုင်ပါသည်။\n\nမနက်ဖြန် ထပ်မံသုံးနိုင်ပါမည်။`);
+    }
+  }
 
   // Clear session
   delete ctx.session.gbuy_step;

@@ -8,6 +8,8 @@ const marketHandler = async (ctx) => {
     productsAsText = productsAsText + `${index + 1} - ${el.name} > ${el.price}${el.currency}\n`;
   });
 
+  productsAsText += `\n💳 ပီးထိုးကြေး > 25,000MMK`;
+
   await ctx.replyWithMarkdown(`🏬 Market ${productsAsText}`);
 };
 

@@ -12,8 +12,8 @@ const getUser = async ({ id, firstName }) => {
     { upsert: true, new: true, setDefaultsOnInsert: true }
   );
 
-  if (!user.balance && user.balance !== 0) {
-    user.balance = 0;
+  if (!user.coins && user.coins !== 0) {
+    user.coins = 0;
     await user.save();
   }
 

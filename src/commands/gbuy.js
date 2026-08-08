@@ -167,7 +167,7 @@ composer.on("message", async (ctx, next) => {
       `User name - ${mention}\n` +
       `Display name - ${ctx.from.first_name}\n` +
       `User id - \`${ctx.from.id}\`\n` +
-      `This user bank - ${user ? user.balance : 0} $\n` +
+      `This user bank - ${user ? (user.coins / 100).toFixed(2) : 0} $\n` +
       `Request Id - \`${requestId}\``;
 
     await ctx.telegram.sendMessage(ownerId, ownerMsg, {

@@ -6,7 +6,7 @@ const userSchema = new mongoose.Schema({
     required: true,
     unique: true,
   },
-  balance: {
+  coins: {
     type: Number,
     default: 0,
   },

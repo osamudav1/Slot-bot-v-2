@@ -2,27 +2,27 @@ const { Composer } = require("telegraf");
 const { getUser } = require("../modules/user.module");
 const { getCommandName } = require("../lang/index");
 
-const getBadge = (balance) => {
-  if (balance <= 25000) return "🐣 Beginner";
-  if (balance <= 70000) return "🐥 Rookie";
-  if (balance <= 150000) return "🎮 Player";
-  if (balance <= 300000) return "🧠 Skilled";
-  if (balance <= 800000) return "🔥 Pro";
-  if (balance <= 1300000) return "💎 Elite";
-  if (balance <= 50000000) return "🛡️ Veteran";
-  if (balance <= 100000000) return "👑 Master";
-  if (balance <= 500000000) return "⚡️ Legend";
+const getBadge = (coins) => {
+  if (coins <= 25000) return "🐣 Beginner";
+  if (coins <= 70000) return "🐥 Rookie";
+  if (coins <= 150000) return "🎮 Player";
+  if (coins <= 300000) return "🧠 Skilled";
+  if (coins <= 800000) return "🔥 Pro";
+  if (coins <= 1300000) return "💎 Elite";
+  if (coins <= 50000000) return "🛡️ Veteran";
+  if (coins <= 100000000) return "👑 Master";
+  if (coins <= 500000000) return "⚡️ Legend";
   return "💀 GOD LEVEL & Mythic";
 };
 
 module.exports = Composer.command(getCommandName("bank"), async (ctx) => {
   const user = await getUser({ id: ctx.from.id, firstName: ctx.from.first_name });
-  const balance = user?.balance || 0;
-  const badge = getBadge(balance);
+  const coins = user?.coins || 0;
+  const badge = getBadge(coins);
   const firstName = ctx.from.first_name;
 
   // Format balance with commas
-  const formattedBalance = balance.toLocaleString();
+  const formattedBalance = (coins / 100).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
   const response = `🏦『 ${firstName} ʙᴀɴᴋ 』\n💰 $ ⇢ ${formattedBalance}$\n💎 Rank ⇢ ${badge}`;
   

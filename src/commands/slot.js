@@ -77,21 +77,21 @@ const slotHandler = async (ctx) => {
     }
 
     const args = text.split(" ");
-    const betAmount = args[1] ? parseInt(args[1]) : 1000;
+    const betAmount = args[1] ? Math.floor(parseFloat(args[1]) * 100) : 100;
 
-    if (isNaN(betAmount)) {
-      return ctx.reply("Usage: /slot <amount>");
+    if (isNaN(betAmount) || betAmount <= 0) {
+      return ctx.reply("Usage: /slot <amount_in_dollars>\nExample: /slot 1.5");
     }
-    if (betAmount < 500) {
-      return ctx.reply("🔴 အနည်းဆုံး 500 $ လောင်းရပါမည်။");
+    if (betAmount < 10) {
+      return ctx.reply("🔴 အနည်းဆုံး 0.10 $ လောင်းရပါမည်။");
     }
-    if (betAmount > 25000) {
-      return ctx.reply("🔴 အများဆုံး 25,000 $ ထိသာ လောင်းနိုင်ပါသည်။");
+    if (betAmount > 1000000) {
+      return ctx.reply("🔴 အများဆုံး 10,000 $ ထိသာ လောင်းနိုင်ပါသည်။");
     }
 
     const user = await User.findOneAndUpdate(
-      { id: userId, balance: { $gte: betAmount } },
-      { $inc: { balance: -betAmount } },
+      { id: userId, coins: { $gte: betAmount } },
+      { $inc: { coins: -betAmount } },
       { new: true }
     );
 
@@ -103,8 +103,9 @@ const slotHandler = async (ctx) => {
 
     const waitMsg = await ctx.reply("⚡️", { reply_to_message_id: ctx.message.message_id });
 
-    const getDesign = (s1, s2, s3, s4, bet = "", win = "", profit = "", status = "") =>
-      `🎰 GUESS SLOT V2.0\n✦ ━━━━━━━━━━━ ✦\n\n┏━━━━━━━━━━━━━┓\n┃ ${s1} | ${s2} | ${s3} | ${s4} ┃\n┗━━━━━━━━━━━━━┛\n\n✦ ━━━━━━━━━━━ ✦\n🎰 SLOT DETAILS\n✦ ━━━━━━━━━━━ ✦\n💵 Bet     : ${bet} $\n💰 Win     : ${win} $\n📊 Profit  : ${profit} $ [${status}]\n✦ ━━━━━━━━━━━ ✦`;
+    const _usd = (cents) => `$${(cents / 100).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    const getDesign = (s1, s2, s3, s4, bet = 0, win = 0, profit = 0, status = "") =>
+      `🎰 GUESS SLOT V2.0\n✦ ━━━━━━━━━━━ ✦\n\n┏━━━━━━━━━━━━━┓\n┃ ${s1} | ${s2} | ${s3} | ${s4} ┃\n┗━━━━━━━━━━━━━┛\n\n✦ ━━━━━━━━━━━ ✦\n🎰 SLOT DETAILS\n✦ ━━━━━━━━━━━ ✦\n💵 Bet     : ${_usd(bet)}\n💰 Win     : ${_usd(win)}\n📊 Profit  : ${_usd(profit)} [${status}]\n✦ ━━━━━━━━━━━ ✦`;
 
     const slots      = ["🍒", "🍎", "🍐", "🍉", "🍊", "🍌", "🍇", "🍓", "🫐", "🍈", "🍍", "🥭", "🍑", "🥝"];
     const DIAMOND    = "💎";
@@ -183,7 +184,7 @@ const slotHandler = async (ctx) => {
     if (winAmount > 0) {
       await User.findOneAndUpdate(
         { id: userId },
-        { $inc: { balance: winAmount } }
+        { $inc: { coins: winAmount } }
       );
     } else {
       await increaseBankAmount({ ctx, increaseAmount: betAmount }).catch(err =>
@@ -191,15 +192,13 @@ const slotHandler = async (ctx) => {
       );
     }
 
-    const profitText = profit >= 0 ? `+${profit}` : `${profit}`;
-
     setTimeout(async () => {
       try {
         await ctx.telegram.editMessageText(
           ctx.chat.id,
           waitMsg.message_id,
           null,
-          getDesign(result1, result2, result3, result4, betAmount, winAmount, profitText, status)
+          getDesign(result1, result2, result3, result4, betAmount, winAmount, profit, status)
         ).catch(err => logger.error("Edit result error: " + err.message));
       } catch (err) {
         logger.error("Timeout result error: " + err.message);

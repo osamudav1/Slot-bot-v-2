@@ -17,11 +17,11 @@ module.exports = Composer.command("daily", async (ctx) => {
     }
 
     const reward = Math.floor(Math.random() * (6000 - 500 + 1)) + 500;
-    user.balance += reward;
+    user.coins += reward;
     user.last_daily_time = now;
     await setUser({ user });
 
-    return ctx.reply(`🎁 Daily Reward: You received ${reward} $!`);
+    return ctx.reply(`🎁 Daily Reward: You received $${(reward / 100).toFixed(2)}!`);
   } catch (err) {
     console.error(err);
     return ctx.reply("🔴 An error occurred while claiming your daily reward.");

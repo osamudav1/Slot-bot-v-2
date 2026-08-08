@@ -45,7 +45,7 @@ const giveSalaryToUser = async ({ ctx }) => {
   try {
     const bankInfo = await getBankInfo({ ctx });
 
-    if (bankInfo.balance <= 0) return await ctx.reply(getString("MONEY_NOT_AVAILABLE"));
+    if (bankInfo.coins <= 0) return await ctx.reply(getString("MONEY_NOT_AVAILABLE"));
 
     const user = await getUser({ id: ctx?.update?.message?.from?.id });
     const limitAsMs = 3_600_000;
@@ -54,7 +54,7 @@ const giveSalaryToUser = async ({ ctx }) => {
 
     if (Date.now() - user?.last_payback_time <= limitAsMs) return await ctx.reply(getString("SALARY_ERROR"));
 
-    user.balance = user?.balance + 1000;
+    user.coins = (user?.coins || 0) + 1000;
     user.last_payback_time = Date.now();
 
     await decreaseBankAmount({ ctx, decreaseAmont: 1000 });

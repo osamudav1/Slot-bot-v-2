@@ -5,7 +5,7 @@ const { getString, getCommandName } = require("../lang/index");
 module.exports = Composer.command(getCommandName("ranking"), async (ctx) => {
   const mostRichestPeople = await findUser({
     order: {
-      balance: "DESC",
+      coins: "DESC",
     },
     take: 10,
   });

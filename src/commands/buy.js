@@ -22,11 +22,12 @@ module.exports = Composer.command(getCommandName("buy"), async (ctx) => {
     if (!selectedProduct) return ctx.reply(getString("PRODUCT_NOT_AVAILABLE"));
 
     if (await isUserHaveThisProduct({ id: ctx?.update?.message?.from?.id, productName: selectedProduct.code })) return ctx.reply(getString("ALREADY_BOUGHT"));
-    if (user?.balance < selectedProduct?.price || !user?.balance) return ctx.reply(getString("NO_BALANCE"));
+    const productPrice = parseInt(selectedProduct.price.replace(/,/g, ''));
+    if (user?.coins < productPrice || !user?.coins) return ctx.reply(getString("NO_BALANCE"));
 
-    await increaseBankAmount({ ctx, increaseAmount: selectedProduct?.price });
+    await increaseBankAmount({ ctx, increaseAmount: productPrice });
 
-    user.balance = user?.balance - selectedProduct?.price;
+    user.coins = user?.coins - productPrice;
 
     const productItem = new Product({
       product: selectedProduct.code,

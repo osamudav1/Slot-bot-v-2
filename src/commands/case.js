@@ -10,12 +10,13 @@ module.exports = Composer.command(getCommandName("case"), async (ctx) => {
   const appDir = dirname(require.main.filename);
 
   if (!user?.case) return ctx.reply(getString("CASE_NOT_FOUND"));
-  const randomAmount = Math.floor(Math.random() * 3) + 1;
+  const randomAmountDollars = Math.floor(Math.random() * 3) + 1;
+  const randomAmountCents = randomAmountDollars * 100;
 
-  user.balance = user?.balance + randomAmount;
+  user.coins = (user?.coins || 0) + randomAmountCents;
   user.case = false;
 
   await setUser({ user });
 
-  return ctx.replyWithPhoto({ source: `${appDir}/assets/case.png` }, { caption: `${getString("CASE_OPEN")} ${randomAmount}` });
+  return ctx.replyWithPhoto({ source: `${appDir}/assets/case.png` }, { caption: `${getString("CASE_OPEN")} $${randomAmountDollars}.00` });
 });

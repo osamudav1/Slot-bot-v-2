@@ -46,22 +46,22 @@ const shanHandler = async (ctx) => {
 
     const text = ctx.message.text || "";
     const args = text.split(" ");
-    const betAmount = args[1] ? parseInt(args[1]) : 1000;
+    const betAmount = args[1] ? Math.floor(parseFloat(args[1]) * 100) : 100;
 
     if (isNaN(betAmount) || betAmount <= 0) {
-      return ctx.reply("အသုံးပြုပုံ: /shan <ပမာဏ>");
+      return ctx.reply("အသုံးပြုပုံ: /shan <ပမာဏ_ဒေါ်လာ>\nဥပမာ: /shan 1.5");
     }
 
-    if (betAmount < 500) {
-      return ctx.reply("🔴 အနည်းဆုံး 500 $ လောင်းရပါမည်။");
+    if (betAmount < 10) {
+      return ctx.reply("🔴 အနည်းဆုံး 0.10 $ လောင်းရပါမည်။");
     }
-    if (betAmount > 25000) {
-      return ctx.reply("🔴 အများဆုံး 25,000 $ ထိသာ လောင်းနိုင်ပါသည်။");
+    if (betAmount > 1000000) {
+      return ctx.reply("🔴 အများဆုံး 10,000 $ ထိသာ လောင်းနိုင်ပါသည်။");
     }
 
     const user = await User.findOneAndUpdate(
-      { id: userId, balance: { $gte: betAmount } },
-      { $inc: { balance: -betAmount } },
+      { id: userId, coins: { $gte: betAmount } },
+      { $inc: { coins: -betAmount } },
       { new: true }
     );
 
@@ -86,12 +86,13 @@ const shanHandler = async (ctx) => {
       status: "playing"
     });
 
+    const _usd = (cents) => `$${(cents / 100).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
     const gameMsg = `🃏 *SHAN KO MEE* 🃏\n` +
       `━━━━━━━━━━━━━\n` +
       `👤 User: ${formatHand(userHand)} (${userPoints} မှတ်)\n` +
       `🤖 Bot: 🎴 🎴\n` +
       `━━━━━━━━━━━━━\n` +
-      `💵 လောင်းကြေး: ${betAmount} $\n\n` +
+      `💵 လောင်းကြေး: ${_usd(betAmount)}\n\n` +
       `ကဒ်ထပ်ဆွဲမလား သို့မဟုတ် ရပ်မလား?`;
 
     await ctx.replyWithMarkdown(gameMsg, {
@@ -158,16 +159,16 @@ const resolveGame = async (ctx, gameKey, botInstantReveal = false, isTimeout = f
 
   if (userPoints > botPoints) {
     winAmount = game.betAmount * 2;
-    resultText += `\n\nUser Win +${winAmount} $`;
-    await User.findOneAndUpdate({ id: game.userId }, { $inc: { balance: winAmount } });
+    resultText += `\n\nUser Win +${(winAmount/100).toFixed(2)} $`;
+    await User.findOneAndUpdate({ id: game.userId }, { $inc: { coins: winAmount } });
     await decreaseBankAmount({ ctx, decreaseAmont: winAmount - game.betAmount }).catch(() => {});
   } else if (userPoints < botPoints) {
-    resultText += `\n\nBot Win -${game.betAmount} $`;
+    resultText += `\n\nBot Win -${(game.betAmount/100).toFixed(2)} $`;
     await increaseBankAmount({ ctx, increaseAmount: game.betAmount }).catch(() => {});
   } else {
     winAmount = game.betAmount;
-    resultText += `\n\nDraw - Refund ${winAmount} $`;
-    await User.findOneAndUpdate({ id: game.userId }, { $inc: { balance: winAmount } });
+    resultText += `\n\nDraw - Refund ${(winAmount/100).toFixed(2)} $`;
+    await User.findOneAndUpdate({ id: game.userId }, { $inc: { coins: winAmount } });
   }
 
   const finalMsg = `🃏 *SHAN KO MEE - ရလဒ်* 🃏\n` +

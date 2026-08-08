@@ -21,28 +21,29 @@ const sendMoneyHandler = async (ctx) => {
   }
 
   const args = ctx.message.text.split(" ");
-  const moneyAmount = parseInt(args[1]);
+  const moneyAmount = Math.floor(parseFloat(args[1]) * 100);
 
   if (isNaN(moneyAmount) || moneyAmount <= 0) {
-    return ctx.reply(`Please provide a valid amount. Example: /${cmd} 1000`);
+    return ctx.reply(`Please provide a valid amount in dollars. Example: /${cmd} 10.5`);
   }
 
   const user = await getUser({ id: senderId });
 
-  if (!user || user.balance < moneyAmount) {
+  if (!user || user.coins < moneyAmount) {
     return ctx.reply(getString("NO_BALANCE"));
   }
 
   // Deduct from sender
-  user.balance -= moneyAmount;
+  user.coins -= moneyAmount;
   await setUser({ user });
 
   // Add to recipient
   const targetUserEntity = await getUser({ id: targetUser.id });
-  targetUserEntity.balance += moneyAmount;
+  targetUserEntity.coins += moneyAmount;
   await setUser({ user: targetUserEntity });
 
-  return ctx.reply(`✅ Successfully sent ${moneyAmount} $ to ${targetUser.first_name || 'user'}.`);
+  const formattedAmount = `$${(moneyAmount / 100).toFixed(2)}`;
+  return ctx.reply(`✅ Successfully sent ${formattedAmount} to ${targetUser.first_name || 'user'}.`);
 };
 
 const composer = new Composer();

@@ -83,10 +83,10 @@ const slotHandler = async (ctx) => {
       return ctx.reply("Usage: /slot <amount>");
     }
     if (betAmount < 500) {
-      return ctx.reply("🔴 အနည်းဆုံး 500 MMK လောင်းရပါမည်။");
+      return ctx.reply("🔴 အနည်းဆုံး 500 $ လောင်းရပါမည်။");
     }
     if (betAmount > 25000) {
-      return ctx.reply("🔴 အများဆုံး 25,000 MMK ထိသာ လောင်းနိုင်ပါသည်။");
+      return ctx.reply("🔴 အများဆုံး 25,000 $ ထိသာ လောင်းနိုင်ပါသည်။");
     }
 
     const user = await User.findOneAndUpdate(
@@ -104,7 +104,7 @@ const slotHandler = async (ctx) => {
     const waitMsg = await ctx.reply("⚡️", { reply_to_message_id: ctx.message.message_id });
 
     const getDesign = (s1, s2, s3, s4, bet = "", win = "", profit = "", status = "") =>
-      `🎰 GUESS SLOT V2.0\n✦ ━━━━━━━━━━━ ✦\n\n┏━━━━━━━━━━━━━┓\n┃ ${s1} | ${s2} | ${s3} | ${s4} ┃\n┗━━━━━━━━━━━━━┛\n\n✦ ━━━━━━━━━━━ ✦\n🎰 SLOT DETAILS\n✦ ━━━━━━━━━━━ ✦\n💵 Bet     : ${bet} MMK\n💰 Win     : ${win} MMK\n📊 Profit  : ${profit} MMK [${status}]\n✦ ━━━━━━━━━━━ ✦`;
+      `🎰 GUESS SLOT V2.0\n✦ ━━━━━━━━━━━ ✦\n\n┏━━━━━━━━━━━━━┓\n┃ ${s1} | ${s2} | ${s3} | ${s4} ┃\n┗━━━━━━━━━━━━━┛\n\n✦ ━━━━━━━━━━━ ✦\n🎰 SLOT DETAILS\n✦ ━━━━━━━━━━━ ✦\n💵 Bet     : ${bet} $\n💰 Win     : ${win} $\n📊 Profit  : ${profit} $ [${status}]\n✦ ━━━━━━━━━━━ ✦`;
 
     const slots      = ["🍒", "🍎", "🍐", "🍉", "🍊", "🍌", "🍇", "🍓", "🫐", "🍈", "🍍", "🥭", "🍑", "🥝"];
     const DIAMOND    = "💎";

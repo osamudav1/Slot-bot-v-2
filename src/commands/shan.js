@@ -53,10 +53,10 @@ const shanHandler = async (ctx) => {
     }
 
     if (betAmount < 500) {
-      return ctx.reply("🔴 အနည်းဆုံး 500 MMK လောင်းရပါမည်။");
+      return ctx.reply("🔴 အနည်းဆုံး 500 $ လောင်းရပါမည်။");
     }
     if (betAmount > 25000) {
-      return ctx.reply("🔴 အများဆုံး 25,000 MMK ထိသာ လောင်းနိုင်ပါသည်။");
+      return ctx.reply("🔴 အများဆုံး 25,000 $ ထိသာ လောင်းနိုင်ပါသည်။");
     }
 
     const user = await User.findOneAndUpdate(
@@ -91,7 +91,7 @@ const shanHandler = async (ctx) => {
       `👤 User: ${formatHand(userHand)} (${userPoints} မှတ်)\n` +
       `🤖 Bot: 🎴 🎴\n` +
       `━━━━━━━━━━━━━\n` +
-      `💵 လောင်းကြေး: ${betAmount} MMK\n\n` +
+      `💵 လောင်းကြေး: ${betAmount} $\n\n` +
       `ကဒ်ထပ်ဆွဲမလား သို့မဟုတ် ရပ်မလား?`;
 
     await ctx.replyWithMarkdown(gameMsg, {
@@ -158,15 +158,15 @@ const resolveGame = async (ctx, gameKey, botInstantReveal = false, isTimeout = f
 
   if (userPoints > botPoints) {
     winAmount = game.betAmount * 2;
-    resultText += `\n\nUser Win +${winAmount} MMK`;
+    resultText += `\n\nUser Win +${winAmount} $`;
     await User.findOneAndUpdate({ id: game.userId }, { $inc: { balance: winAmount } });
     await decreaseBankAmount({ ctx, decreaseAmont: winAmount - game.betAmount }).catch(() => {});
   } else if (userPoints < botPoints) {
-    resultText += `\n\nBot Win -${game.betAmount} MMK`;
+    resultText += `\n\nBot Win -${game.betAmount} $`;
     await increaseBankAmount({ ctx, increaseAmount: game.betAmount }).catch(() => {});
   } else {
     winAmount = game.betAmount;
-    resultText += `\n\nDraw - Refund ${winAmount} MMK`;
+    resultText += `\n\nDraw - Refund ${winAmount} $`;
     await User.findOneAndUpdate({ id: game.userId }, { $inc: { balance: winAmount } });
   }
 

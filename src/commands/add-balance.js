@@ -38,7 +38,7 @@ module.exports = Composer.command(getCommandName("add"), async (ctx) => {
     targetUserEntity.balance = (targetUserEntity.balance || 0) + amount;
     await setUser({ user: targetUserEntity });
 
-    return ctx.reply(`✅ Successfully updated balance for user ID: ${targetUserId}.\nNew Balance: ${targetUserEntity.balance} MMK`);
+    return ctx.reply(`✅ Successfully updated balance for user ID: ${targetUserId}.\nNew Balance: ${targetUserEntity.balance} $`);
   } catch (err) {
     console.error(err);
     return ctx.reply("🔴 An error occurred while updating balance.");

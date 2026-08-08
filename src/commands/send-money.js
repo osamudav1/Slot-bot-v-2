@@ -42,7 +42,7 @@ const sendMoneyHandler = async (ctx) => {
   targetUserEntity.balance += moneyAmount;
   await setUser({ user: targetUserEntity });
 
-  return ctx.reply(`✅ Successfully sent ${moneyAmount} MMK to ${targetUser.first_name || 'user'}.`);
+  return ctx.reply(`✅ Successfully sent ${moneyAmount} $ to ${targetUser.first_name || 'user'}.`);
 };
 
 const composer = new Composer();

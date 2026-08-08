@@ -21,7 +21,7 @@ module.exports = Composer.command("daily", async (ctx) => {
     user.last_daily_time = now;
     await setUser({ user });
 
-    return ctx.reply(`🎁 Daily Reward: You received ${reward} MMK!`);
+    return ctx.reply(`🎁 Daily Reward: You received ${reward} $!`);
   } catch (err) {
     console.error(err);
     return ctx.reply("🔴 An error occurred while claiming your daily reward.");

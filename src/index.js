@@ -52,7 +52,7 @@ const setBotCommands = async (bot) => {
     { command: "daily", description: "Claim your daily reward" },
     { command: "mgift", description: "Send money (Reply to user)" },
     { command: getCommandName("ranking") || "ranking", description: "View top players" },
-    { command: getCommandName("centralbank") || "centralbank", description: "View central bank" },
+
     { command: getCommandName("case") || "case", description: "Open a crate" },
     { command: "gbuy", description: "Exchange cards" },
   ];

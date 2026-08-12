@@ -3,6 +3,7 @@ const { increaseBankAmount } = require("../modules/bank.module");
 const { getString, getCommandName } = require("../lang/index");
 const User = require("../database/entity/user.entitiy");
 const logger = require("../logger");
+const { getPoolBalance, addToPool, subtractFromPool } = require("../modules/pool.module");
 
 const activeSpins = new Set();
 const lastSpinTime = new Map();
@@ -124,12 +125,18 @@ const slotHandler = async (ctx) => {
 
     // ─── Determine outcome via WLJ ─────────────────────────────────────────
     const wlj    = getWLJ(userId);
-    const random = Math.random() * 100;
+    const poolBalance = await getPoolBalance();
+    let random = Math.random() * 100;
 
     let result1, result2, result3, result4;
     let winMultiplier = 0;
     let status        = "Lose";
     let outcome       = "L";
+
+    // Force loss if pool is too low (e.g., less than 5x the bet)
+    if (poolBalance < betAmount * 5 && ownerId !== userId.toString()) {
+      random = 99; // Force a loss roll
+    }
 
     if (random < wlj.J) {
       // ── JACKPOT: 4 diamonds → 5x ─────────────────────────────────────────
@@ -195,10 +202,16 @@ const slotHandler = async (ctx) => {
 
     if (winAmount > 0) {
       await User.findOneAndUpdate(
-        { id: userId },
+        { id: Number(userId) },
         { $inc: { coins: winAmount } }
       );
+      // Subtract profit from pool (since user won)
+      if (profit > 0) {
+        await subtractFromPool(profit);
+      }
     } else {
+      // User lost, add the bet amount to the pool
+      await addToPool(betAmount);
       await increaseBankAmount({ ctx, increaseAmount: betAmount }).catch(err =>
         logger.error("Bank update error: " + err.message)
       );

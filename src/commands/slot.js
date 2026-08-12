@@ -7,7 +7,7 @@ const { getPoolBalance, addToPool, subtractFromPool } = require("../modules/pool
 
 const activeSpins = new Set();
 const lastSpinTime = new Map();
-const COOLDOWN_TIME = 5000; // 5 seconds
+const COOLDOWN_TIME = 8000; // 8 seconds
 
 // ─── WLJ CONFIG ──────────────────────────────────────────────────────────────
 // Defaults — owner can change at runtime via /wlj command

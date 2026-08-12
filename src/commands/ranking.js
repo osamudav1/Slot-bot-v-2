@@ -2,7 +2,9 @@ const { Composer } = require("telegraf");
 const { findUser } = require("../modules/user.module");
 const { getString, getCommandName } = require("../lang/index");
 
-module.exports = Composer.command(getCommandName("ranking"), async (ctx) => {
+const composer = new Composer();
+
+composer.command(getCommandName("ranking"), async (ctx) => {
   const mostRichestPeople = await findUser({
     order: {
       coins: "DESC",
@@ -18,3 +20,5 @@ module.exports = Composer.command(getCommandName("ranking"), async (ctx) => {
 
   return ctx.replyWithMarkdown(mostRichestPeopleAsText);
 });
+
+module.exports = composer;

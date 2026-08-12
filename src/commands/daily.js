@@ -3,7 +3,9 @@ const User = require("../database/entity/user.entitiy");
 const { getUser, setUser } = require("../modules/user.module");
 const { getString } = require("../lang/index");
 
-module.exports = Composer.command("daily", async (ctx) => {
+const composer = new Composer();
+
+composer.command("daily", async (ctx) => {
   try {
     const user = await getUser({ id: ctx.from.id });
     const now = Date.now();
@@ -27,3 +29,5 @@ module.exports = Composer.command("daily", async (ctx) => {
     return ctx.reply("🔴 An error occurred while claiming your daily reward.");
   }
 });
+
+module.exports = composer;

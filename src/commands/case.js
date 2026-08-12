@@ -3,7 +3,9 @@ const { getUser, setUser } = require("../modules/user.module");
 const { getString, getCommandName } = require("../lang/index");
 const { dirname } = require("path");
 
-module.exports = Composer.command(getCommandName("case"), async (ctx) => {
+const composer = new Composer();
+
+composer.command(getCommandName("case"), async (ctx) => {
   const user = await getUser({ id: ctx?.update?.message?.from?.id });
   if (!user) return ctx.reply(getString("DATABASE_LOCK"));
 
@@ -20,3 +22,5 @@ module.exports = Composer.command(getCommandName("case"), async (ctx) => {
 
   return ctx.replyWithPhoto({ source: `${appDir}/assets/case.png` }, { caption: `${getString("CASE_OPEN")} $${randomAmountDollars}.00` });
 });
+
+module.exports = composer;

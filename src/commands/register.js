@@ -1,7 +1,9 @@
 const { Composer } = require("telegraf");
 const { registerGroup } = require("../modules/group.module");
 
-module.exports = Composer.command("register", async (ctx) => {
+const composer = new Composer();
+
+composer.command("register", async (ctx) => {
   const ownerId = process.env.OWNER_ID;
   const currentUserId = ctx.from.id.toString();
 
@@ -37,3 +39,5 @@ module.exports = Composer.command("register", async (ctx) => {
     }
   }
 });
+
+module.exports = composer;

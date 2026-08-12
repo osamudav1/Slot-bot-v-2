@@ -1,6 +1,8 @@
 const { Composer, Markup } = require("telegraf");
 
-module.exports = Composer.command("help", async (ctx) => {
+const composer = new Composer();
+
+composer.command("help", async (ctx) => {
   const helpText = `📜 CARD PURCHASE RULES
 
 🟢 Common – Medium Cards
@@ -35,3 +37,5 @@ module.exports = Composer.command("help", async (ctx) => {
     [Markup.button.url("Official Group", "https://t.me/pyaesone2d2")]
   ]));
 });
+
+module.exports = composer;

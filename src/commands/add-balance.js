@@ -2,7 +2,9 @@ const { Composer } = require("telegraf");
 const { getUser, setUser } = require("../modules/user.module");
 const { getCommandName } = require("../lang/index");
 
-module.exports = Composer.command(getCommandName("add"), async (ctx) => {
+const composer = new Composer();
+
+composer.command(getCommandName("add"), async (ctx) => {
   const ownerId = process.env.OWNER_ID;
   const currentUserId = ctx.from.id.toString();
 
@@ -45,3 +47,5 @@ module.exports = Composer.command(getCommandName("add"), async (ctx) => {
     return ctx.reply("🔴 An error occurred while updating balance.");
   }
 });
+
+module.exports = composer;

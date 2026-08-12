@@ -82,8 +82,8 @@ const slotHandler = async (ctx) => {
     if (isNaN(betAmount) || betAmount <= 0) {
       return ctx.reply("Usage: /slot <amount_in_dollars>\nExample: /slot 1.5");
     }
-    if (betAmount < 10000) {
-      return ctx.reply("🔴 အနည်းဆုံး 100 $ လောင်းရပါမည်။");
+    if (betAmount < 2000) {
+      return ctx.reply("🔴 အနည်းဆုံး 20 $ လောင်းရပါမည်။");
     }
     if (betAmount > 50000) {
       return ctx.reply("🔴 အများဆုံး 500 $ ထိသာ လောင်းနိုင်ပါသည်။");

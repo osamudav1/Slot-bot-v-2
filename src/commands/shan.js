@@ -52,15 +52,15 @@ const shanHandler = async (ctx) => {
       return ctx.reply("အသုံးပြုပုံ: /shan <ပမာဏ_ဒေါ်လာ>\nဥပမာ: /shan 1.5");
     }
 
-    if (betAmount < 10) {
-      return ctx.reply("🔴 အနည်းဆုံး 0.10 $ လောင်းရပါမည်။");
+    if (betAmount < 2000) {
+      return ctx.reply("🔴 အနည်းဆုံး 20 $ လောင်းရပါမည်။");
     }
-    if (betAmount > 1000000) {
-      return ctx.reply("🔴 အများဆုံး 10,000 $ ထိသာ လောင်းနိုင်ပါသည်။");
+    if (betAmount > 50000) {
+      return ctx.reply("🔴 အများဆုံး 500 $ ထိသာ လောင်းနိုင်ပါသည်။");
     }
 
     const user = await User.findOneAndUpdate(
-      { id: userId, coins: { $gte: betAmount } },
+      { id: Number(userId), coins: { $gte: betAmount } },
       { $inc: { coins: -betAmount } },
       { new: true }
     );
@@ -76,15 +76,7 @@ const shanHandler = async (ctx) => {
     const userPoints = calculatePoints(userHand);
     const botPoints = calculatePoints(botHand);
 
-    activeGames.set(gameKey, {
-      userId,
-      chatId,
-      betAmount,
-      userHand,
-      botHand,
-      deck,
-      status: "playing"
-    });
+
 
     const _usd = (cents) => `$${(cents / 100).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
     const gameMsg = `🃏 *SHAN KO MEE* 🃏\n` +
@@ -95,7 +87,7 @@ const shanHandler = async (ctx) => {
       `💵 လောင်းကြေး: ${_usd(betAmount)}\n\n` +
       `ကဒ်ထပ်ဆွဲမလား သို့မဟုတ် ရပ်မလား?`;
 
-    await ctx.replyWithMarkdown(gameMsg, {
+    const sentMsg = await ctx.replyWithMarkdown(gameMsg, {
       reply_to_message_id: ctx.message.message_id,
       ...Markup.inlineKeyboard([
         [
@@ -103,6 +95,17 @@ const shanHandler = async (ctx) => {
           Markup.button.callback("တော်ပြီ ✋", `shan_stand_${userId}`)
         ]
       ])
+    });
+
+    activeGames.set(gameKey, {
+      userId,
+      chatId,
+      messageId: sentMsg.message_id,
+      betAmount,
+      userHand,
+      botHand,
+      deck,
+      status: "playing"
     });
 
     // Auto-reveal if bot has high points (Shan 8 or 9)
@@ -160,7 +163,7 @@ const resolveGame = async (ctx, gameKey, botInstantReveal = false, isTimeout = f
   if (userPoints > botPoints) {
     winAmount = game.betAmount * 2;
     resultText += `\n\nUser Win +${(winAmount/100).toFixed(2)} $`;
-    await User.findOneAndUpdate({ id: game.userId }, { $inc: { coins: winAmount } });
+    await User.findOneAndUpdate({ id: Number(game.userId) }, { $inc: { coins: winAmount } });
     await decreaseBankAmount({ ctx, decreaseAmont: winAmount - game.betAmount }).catch(() => {});
   } else if (userPoints < botPoints) {
     resultText += `\n\nBot Win -${(game.betAmount/100).toFixed(2)} $`;
@@ -168,7 +171,7 @@ const resolveGame = async (ctx, gameKey, botInstantReveal = false, isTimeout = f
   } else {
     winAmount = game.betAmount;
     resultText += `\n\nDraw - Refund ${(winAmount/100).toFixed(2)} $`;
-    await User.findOneAndUpdate({ id: game.userId }, { $inc: { coins: winAmount } });
+    await User.findOneAndUpdate({ id: Number(game.userId) }, { $inc: { coins: winAmount } });
   }
 
   const finalMsg = `🃏 *SHAN KO MEE - ရလဒ်* 🃏\n` +
@@ -179,11 +182,10 @@ const resolveGame = async (ctx, gameKey, botInstantReveal = false, isTimeout = f
     resultText;
 
   try {
-    if (ctx.callbackQuery) {
-      await ctx.editMessageText(finalMsg, { parse_mode: "Markdown" }).catch(() => {});
-    } else {
+    await ctx.telegram.editMessageText(game.chatId, game.messageId, null, finalMsg, { parse_mode: "Markdown" }).catch(async (err) => {
+      logger.error("Edit result error, sending new message: " + err.message);
       await ctx.telegram.sendMessage(game.chatId, finalMsg, { parse_mode: "Markdown" }).catch(() => {});
-    }
+    });
   } catch (err) {
     logger.error("Resolve message error: " + err.message);
   }

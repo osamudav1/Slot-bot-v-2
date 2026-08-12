@@ -16,7 +16,7 @@ module.exports = {
   MONEY_NOT_AVAILABLE: `⚙ Merkez bankasında bulunan para sayısı yeteri kadar olmadığından maaşınız yatırılamadı. ${escapeCharacter} ${escapeCharacter} ℹ️ Merkez bankasındaki toplam parayı /merkezbankasi komutuyla kontrol edebilirsiniz.`,
   SALARY_OK: `💳 Maaşınız başarıyla banka hesabınıza yatırıldı. Kontrol etmek için: /wallet`,
   SALARY_ERROR: `📊 Maaşınız zaten banka hesabınıza yatırıldı. Her 1 saatte bir kez çekebilirsiniz!`,
-  NO_BALANCE: `🔴 Yeteri kadar bakiyeniz yok. /wallet yazarak kontrol edebilirsiniz.`,
+  NO_BALANCE: `🔴 You don't have enough balance. \nသေစမ်း မွဲသွားပီလား /wallet.`,
   BUY_PRODUCT_SUCCESS: "📈 Ürünü başarıyla satın aldınız.",
   INVALID_PRODUCT_ID: "🔴 Girdiğiniz ürün idsi geçerli değil!",
   CLICK_TO_SEE_PROFILE: "Profili görüntülemek için tıkla",

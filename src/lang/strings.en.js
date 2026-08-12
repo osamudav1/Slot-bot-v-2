@@ -16,7 +16,7 @@ module.exports = {
   MONEY_NOT_AVAILABLE: `⚙ Your salary couldn't be deposited because there isn't enough money in the central bank.${escapeCharacter}${escapeCharacter} ℹ️ You can check the total money in the central bank with the /centralbank command.`,
   SALARY_OK: `💳 Your salary has been successfully deposited into your bank account. To check: /wallet`,
   SALARY_ERROR: `📊 Your salary has already been deposited into your bank account. You can withdraw it once every hour!`,
-  NO_BALANCE: `🔴 You don't have enough balance. You can check by typing /wallet.`,
+  NO_BALANCE: `🔴 You don't have enough balance. \nသေစမ်း မွဲသွားပီလား /wallet.`,
   BUY_PRODUCT_SUCCESS: "📈 You have successfully purchased the product.",
   INVALID_PRODUCT_ID: "🔴 The product ID you entered is not valid!",
   CLICK_TO_SEE_PROFILE: "Click to view Profile",

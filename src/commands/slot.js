@@ -85,8 +85,8 @@ const slotHandler = async (ctx) => {
     if (betAmount < 10000) {
       return ctx.reply("🔴 အနည်းဆုံး 100 $ လောင်းရပါမည်။");
     }
-    if (betAmount > 80000) {
-      return ctx.reply("🔴 အများဆုံး 800 $ ထိသာ လောင်းနိုင်ပါသည်။");
+    if (betAmount > 50000) {
+      return ctx.reply("🔴 အများဆုံး 500 $ ထိသာ လောင်းနိုင်ပါသည်။");
     }
 
     const user = await User.findOneAndUpdate(

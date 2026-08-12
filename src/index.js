@@ -116,7 +116,7 @@ const main = async () => {
       const currentUserId = ctx.from.id.toString();
 
       // Check for new user (first time start or message)
-      const existingUser = await User.findOne({ id: ctx.from.id });
+      const existingUser = await User.findOne({ id: Number(ctx.from.id) });
       if (!existingUser) {
         if (ownerId) {
           const newUserMsg = `🆕 New User Notification!\n\n` +

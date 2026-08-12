@@ -82,15 +82,15 @@ const slotHandler = async (ctx) => {
     if (isNaN(betAmount) || betAmount <= 0) {
       return ctx.reply("Usage: /slot <amount_in_dollars>\nExample: /slot 1.5");
     }
-    if (betAmount < 10) {
-      return ctx.reply("🔴 အနည်းဆုံး 0.10 $ လောင်းရပါမည်။");
+    if (betAmount < 10000) {
+      return ctx.reply("🔴 အနည်းဆုံး 100 $ လောင်းရပါမည်။");
     }
-    if (betAmount > 1000000) {
-      return ctx.reply("🔴 အများဆုံး 10,000 $ ထိသာ လောင်းနိုင်ပါသည်။");
+    if (betAmount > 80000) {
+      return ctx.reply("🔴 အများဆုံး 800 $ ထိသာ လောင်းနိုင်ပါသည်။");
     }
 
     const user = await User.findOneAndUpdate(
-      { id: userId, coins: { $gte: betAmount } },
+      { id: Number(userId), coins: { $gte: betAmount } },
       { $inc: { coins: -betAmount } },
       { new: true }
     );

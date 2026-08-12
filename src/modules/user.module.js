@@ -7,7 +7,7 @@ const getUser = async ({ id, firstName }) => {
   }
 
   let user = await User.findOneAndUpdate(
-    { id },
+    { id: Number(id) },
     update,
     { upsert: true, new: true, setDefaultsOnInsert: true }
   );

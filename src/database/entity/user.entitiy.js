@@ -18,7 +18,7 @@ const userSchema = new mongoose.Schema({
     type: Number,
     default: 0,
   },
-  firstName: {
+  first_name: {
     type: String,
     default: "User",
   },

@@ -13,7 +13,7 @@ module.exports = Composer.command(getCommandName("ranking"), async (ctx) => {
   let mostRichestPeopleAsText = "";
 
   for (const person of mostRichestPeople) {
-    mostRichestPeopleAsText = mostRichestPeopleAsText + `💰 [${person.firstName || "User"}](tg://user?id=${person.id})\n`;
+    mostRichestPeopleAsText = mostRichestPeopleAsText + `💰 [${person.first_name || "User"}](tg://user?id=${person.id})\n`;
   }
 
   return ctx.replyWithMarkdown(mostRichestPeopleAsText);

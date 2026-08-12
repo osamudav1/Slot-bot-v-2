@@ -3,7 +3,7 @@ const User = require("../database/entity/user.entitiy");
 const getUser = async ({ id, firstName }) => {
   const update = { $set: {} };
   if (firstName) {
-    update.$set.firstName = firstName;
+    update.$set.first_name = firstName;
   }
 
   let user = await User.findOneAndUpdate(

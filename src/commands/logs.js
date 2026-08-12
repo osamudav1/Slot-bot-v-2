@@ -13,7 +13,7 @@ const getUserListPage = async (page) => {
 
   let text = `👤 **User List (Page ${page}/${totalPages})**\nTotal Users: ${totalUsers}\n\n`;
   users.forEach((user, index) => {
-    text += `${skip + index + 1}. [${user.firstName}](tg://user?id=${user.id}) (\`${user.id}\`)\n`;
+    text += `${skip + index + 1}. [${user.first_name}](tg://user?id=${user.id}) (\`${user.id}\`)\n`;
   });
 
   const buttons = [];

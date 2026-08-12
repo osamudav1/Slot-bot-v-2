@@ -67,6 +67,7 @@ const setBotCommands = async (bot) => {
     { command: "guess", description: "Guess Bot ON/OFF" },
     { command: "catch", description: "Catch Bot ON/OFF" },
     { command: "grab", description: "Grab Bot ON/OFF" },
+    { command: "addpool", description: "Add money to payout pool (Owner only)" },
   ];
 
   // Default commands for everyone

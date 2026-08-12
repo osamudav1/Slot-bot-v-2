@@ -88,6 +88,9 @@ const setBotCommands = async (bot) => {
 
 const main = async () => {
   dotenv.config();
+  
+  // Enable auto-registration for groups
+  global.autoRegister = true;
 
   // 🆕 BOT START TIME - မက်ဆေ့ခ်ျဟောင်းတွေကို စစ်ထုတ်ဖို့
   const BOT_START_TIME = Date.now();

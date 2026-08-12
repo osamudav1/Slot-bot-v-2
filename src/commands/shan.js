@@ -5,6 +5,8 @@ const User = require("../database/entity/user.entitiy");
 const logger = require("../logger");
 
 const activeGames = new Map();
+const lastShanTime = new Map();
+const COOLDOWN_TIME = 5000; // 5 seconds
 
 const SUITS = ["♠️", "♥️", "♣️", "♦️"];
 const VALUES = ["A", "2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K"];
@@ -42,6 +44,15 @@ const shanHandler = async (ctx) => {
   try {
     if (activeGames.has(gameKey)) {
       return ctx.reply("ဂိမ်းဆော့နေဆဲဖြစ်ပါသည်။ ခဏစောင့်ပေးပါ။").catch(() => {});
+    }
+
+    const ownerId = process.env.OWNER_ID;
+    const now = Date.now();
+    if (ownerId !== userId.toString() && lastShanTime.has(userId)) {
+      const timeLeft = Math.ceil((lastShanTime.get(userId) + COOLDOWN_TIME - now) / 1000);
+      if (timeLeft > 0) {
+        return ctx.reply(`⏳ Please wait ${timeLeft} seconds before playing again!`).catch(() => {});
+      }
     }
 
     const text = ctx.message.text || "";
@@ -107,6 +118,7 @@ const shanHandler = async (ctx) => {
       deck,
       status: "playing"
     });
+    lastShanTime.set(userId, Date.now());
 
     // Auto-reveal if bot has high points (Shan 8 or 9)
     if (botPoints >= 8) {

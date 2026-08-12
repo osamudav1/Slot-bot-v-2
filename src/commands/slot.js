@@ -5,6 +5,8 @@ const User = require("../database/entity/user.entitiy");
 const logger = require("../logger");
 
 const activeSpins = new Set();
+const lastSpinTime = new Map();
+const COOLDOWN_TIME = 5000; // 5 seconds
 
 // ─── WLJ CONFIG ──────────────────────────────────────────────────────────────
 // Defaults — owner can change at runtime via /wlj command
@@ -76,6 +78,15 @@ const slotHandler = async (ctx) => {
       return ctx.reply("Please wait for your current spin to finish!").catch(() => {});
     }
 
+    const ownerId = process.env.OWNER_ID;
+    const now = Date.now();
+    if (ownerId !== userId.toString() && lastSpinTime.has(userId)) {
+      const timeLeft = Math.ceil((lastSpinTime.get(userId) + COOLDOWN_TIME - now) / 1000);
+      if (timeLeft > 0) {
+        return ctx.reply(`⏳ Please wait ${timeLeft} seconds before spinning again!`).catch(() => {});
+      }
+    }
+
     const args = text.split(" ");
     const betAmount = args[1] ? Math.floor(parseFloat(args[1]) * 100) : 100;
 
@@ -100,6 +111,7 @@ const slotHandler = async (ctx) => {
     }
 
     activeSpins.add(userId);
+    lastSpinTime.set(userId, Date.now());
 
     const waitMsg = await ctx.reply("⚡️", { reply_to_message_id: ctx.message.message_id });
 

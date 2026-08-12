@@ -24,7 +24,7 @@ module.exports = Composer.command(getCommandName("bank"), async (ctx) => {
   // Format balance with commas
   const formattedBalance = (coins / 100).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
-  const response = `🏦『 ${firstName} ʙᴀɴᴋ 』\n💰 $ ⇢ ${formattedBalance}$\n💎 Rank ⇢ ${badge}`;
+  const response = `🏦『 ${firstName} ᴡᴀʟʟᴇᴛ 』\n💰 $ ⇢ ${formattedBalance}$\n💎 Rank ⇢ ${badge}`;
   
   try {
     const photos = await ctx.telegram.getUserProfilePhotos(ctx.from.id, 0, 1);

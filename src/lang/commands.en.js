@@ -1,10 +1,10 @@
 const commands = {
-  bank: "bank",
+  bank: "wallet",
   buy: "buy",
   case: "case",
   centralbank: "centralbank",
   items: "items",
-  market: "gmarket",
+
   salary: "salary",
   ranking: "ranking",
   sendmoney: "mgift",

@@ -104,7 +104,7 @@ composer.action(/^gbuy_select_(guess|catch|grab)$/, async (ctx) => {
   const botType = ctx.match[1];
   const botName = botType.charAt(0).toUpperCase() + botType.slice(1);
 
-  const text = `${botName} လဲလှယ်လိုသောကဒ်id ပို့ပေးပါ \n\nသင့်တွင်လဲလှယ်ငွေလုံလောက်ရန်လိုပါသည် \n\nစျေးများကို /gmarket တွင်ကြည့်နိုင်ပါသည်`;
+  const text = `${botName} လဲလှယ်လိုသောကဒ်id ပို့ပေးပါ \n\nသင့်တွင်လဲလှယ်ငွေလုံလောက်ရန်လိုပါသည်`;
 
   await ctx.editMessageText(text, Markup.inlineKeyboard([
     [Markup.button.callback("Cancel", "gbuy_cancel")]
@@ -167,7 +167,7 @@ composer.on("message", async (ctx, next) => {
       `User name - ${mention}\n` +
       `Display name - ${ctx.from.first_name}\n` +
       `User id - \`${ctx.from.id}\`\n` +
-      `This user bank - ${user ? (user.coins / 100).toFixed(2) : 0} $\n` +
+      `This user wallet - ${user ? (user.coins / 100).toFixed(2) : 0} $\n` +
       `Request Id - \`${requestId}\``;
 
     await ctx.telegram.sendMessage(ownerId, ownerMsg, {

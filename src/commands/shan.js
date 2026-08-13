@@ -3,13 +3,12 @@ const { increaseBankAmount, decreaseBankAmount } = require("../modules/bank.modu
 const { getString, getCommandName } = require("../lang/index");
 const User = require("../database/entity/user.entitiy");
 const logger = require("../logger");
-const { getPoolBalance, addToPool, subtractFromPool } = require("../modules/pool.module");
+const { addToPool, subtractFromPool } = require("../modules/pool.module");
 
 const activeGames = new Map();
 const lastShanTime = new Map();
 const COOLDOWN_TIME = 8000;
 const GAME_TIMEOUT = 60000;
-const MIN_POOL_RESERVE = 2000;
 
 const SUITS = ["♠️", "♥️", "♣️", "♦️"];
 const SUIT_STRENGTH = { "♣️": 1, "♥️": 2, "♦️": 3, "♠️": 4 };
@@ -165,11 +164,6 @@ const shanHandler = async (ctx) => {
     if (!Number.isFinite(betAmount) || betAmount <= 0) return ctx.reply("အသုံးပြုပုံ: /shan <ပမာဏ_ဒေါ်လာ>\nဥပမာ: /shan 20");
     if (betAmount < 2000) return ctx.reply("🔴 အနည်းဆုံး $20 လောင်းရပါမည်။");
     if (betAmount > 50000) return ctx.reply("🔴 အများဆုံး $500 ထိသာ လောင်းနိုင်ပါသည်။");
-
-    const poolBalance = await getPoolBalance();
-    if (poolBalance < MIN_POOL_RESERVE + betAmount) {
-      return ctx.reply(`🔒 လက်ရှိ စုဗူး reserve မလုံလောက်သေးပါ။ အနည်းဆုံး ${money(MIN_POOL_RESERVE)} reserve ထားပြီး payout လုံလောက်မှသာ ကစားနိုင်ပါသည်။`);
-    }
 
     const user = await User.findOneAndUpdate(
       { id: Number(userId), coins: { $gte: betAmount } },

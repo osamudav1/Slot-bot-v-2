@@ -58,9 +58,11 @@ async function createInvoice(ctx, usdCents) {
       "",
       "━━━━━━━━━━━━━━━━━━━━━━",
     ].join("\n");
+    const transferUrl = `ton://transfer/${ownerWallet}?amount=${encodeURIComponent(purchase.gramNano)}&text=${encodeURIComponent(purchase.comment)}`;
     const invoiceButtons = Markup.inlineKeyboard([
+      [Markup.button.url("💎 Send GRAM", transferUrl)],
       [Markup.button.callback("✅ Verify Payment", `gram_verify:${purchase.purchaseId}`)],
-      [Markup.button.callback("🔄 Refresh Invoice", `gram_refresh:${purchase.purchaseId}`), Markup.button.callback("❌ Cancel", `gram_cancel:${purchase.purchaseId}`)],
+      [Markup.button.callback("❌ Cancel", `gram_cancel:${purchase.purchaseId}`)],
     ]);
     if (ctx.callbackQuery) await ctx.editMessageText(invoice, invoiceButtons);
     else await ctx.reply(invoice, invoiceButtons);
@@ -108,11 +110,6 @@ gramBuyScene.on(message("text"), async (ctx) => {
   const usdCents = Math.round(Number(input) * 100);
   ctx.scene.state.customAmount = false;
   return createInvoice(ctx, usdCents);
-});
-
-gramBuyScene.action(/^gram_refresh:([a-f0-9-]+)$/i, async (ctx) => {
-  if (ctx.scene.state.purchaseId !== ctx.match[1]) return ctx.answerCbQuery("ဒီ invoice ကို မတွေ့ပါ။");
-  return ctx.answerCbQuery("Invoice က မပြောင်းပါဘူး။ Payment ရောက်ပြီး Verify ကိုနှိပ်ပါ။");
 });
 
 gramBuyScene.action(/^gram_verify:([a-f0-9-]+)$/i, async (ctx) => {

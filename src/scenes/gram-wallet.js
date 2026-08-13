@@ -19,9 +19,9 @@ function isOwner(ctx) {
 
 function walletButtons() {
   return Markup.inlineKeyboard([
+    [Markup.button.callback("🛠 Maintenance ON / OFF", "gw_maintenance")],
     [Markup.button.callback("🔗 Connect Owner Wallet", "gw_connect_wallet")],
     [Markup.button.callback("🪙 Set GRAM Token Master", "gw_connect_token")],
-    [Markup.button.callback("🛠 Maintenance", "gw_maintenance")],
     [Markup.button.callback("🔄 Refresh Status", "gw_status")],
     [Markup.button.callback("❌ Close", "gw_close")],
   ]);
@@ -31,7 +31,7 @@ async function statusText() {
   const config = await getPaymentConfig();
   const maintenance = await isMaintenanceEnabled();
   return [
-    "⚙️ GRAM Wallet Settings",
+    "⚙️ GRAM Wallet Settings + Maintenance",
     "",
     `Owner wallet: ${config.ownerWallet || "Not set"}`,
     `GRAM token master: ${config.jettonMaster || "Not set"}`,

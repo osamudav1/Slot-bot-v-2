@@ -74,9 +74,13 @@ async function createInvoice(ctx, usdCents) {
 
 gramBuyScene.enter(async (ctx) => {
   try {
-    await assertConfig();
+    const { ownerWallet, jettonMaster } = await getPaymentConfig();
+    if (!ownerWallet) throw new Error("Owner GRAM wallet is not configured");
+    const verificationWarning = jettonMaster
+      ? ""
+      : "\n\n⚠️ Owner က GRAM token master ကို မသတ်မှတ်ရသေးပါ။ Payment verify မလုပ်ခင် `/gramwallet` → Set GRAM Token Master လုပ်ပါ။";
     await ctx.reply(
-      `💵 Top Up Your Balance\n\nRate: ${RATE_TEXT}\nMinimum: ${formatUsd(MIN_USD_CENTS)}\n\nဝယ်လိုတဲ့ amount ကို အောက်က button ကနေ ရွေးပါ။`,
+      `💵 Top Up Your Balance\n\nRate: ${RATE_TEXT}\nMinimum: ${formatUsd(MIN_USD_CENTS)}${verificationWarning}\n\nဝယ်လိုတဲ့ amount ကို အောက်က button ကနေ ရွေးပါ။`,
       amountButtons(),
     );
   } catch (error) {

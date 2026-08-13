@@ -3,7 +3,7 @@ const logger = require("./logger");
 const dotenv = require("dotenv");
 const fs = require("fs");
 const express = require("express");
-const { connectDB } = require("./database/index");
+const { connectDB, mongoose } = require("./database/index");
 const { getCommandName } = require("./lang/index");
 const handleCaseEvent = require("./handlers/handle.case");
 const { getGroup, createGroupRequest, getTotalGroups, registerGroup } = require("./modules/group.module");
@@ -98,17 +98,28 @@ const main = async () => {
 
   const app = express();
   const PORT = process.env.PORT || 3000;
+  let botReady = false;
+
   app.get("/", (req, res) => res.status(200).send("OK"));
-  app.get("/health", (req, res) => res.status(200).send("OK"));
+  app.get("/health", (req, res) => {
+    const dbReady = mongoose.connection.readyState === 1;
+    if (!botReady || !dbReady) {
+      return res.status(503).json({ ok: false, botReady, dbReady });
+    }
+    return res.status(200).json({ ok: true, botReady: true, dbReady: true });
+  });
   
   const server = app.listen(PORT, "0.0.0.0", () => {
     logger.success(`Health check server is running on port ${PORT}`);
   });
 
-  connectDB().catch(err => logger.error("Initial DB connection failed: " + err.message));
-
   try {
+    await connectDB();
     const bot = new Telegraf(process.env.TELEGRAM_BOT_TOKEN);
+
+    bot.catch((error) => {
+      logger.error(`Telegram update error: ${error.message}`);
+    });
 
     bot.use(session());
 
@@ -227,6 +238,7 @@ const main = async () => {
       dropPendingUpdates: true
     });
 
+    botReady = true;
     logger.success("Telegram bot started");
 
     process.once("SIGINT", () => {
@@ -239,7 +251,10 @@ const main = async () => {
     });
 
   } catch (error) {
+    botReady = false;
     logger.error(`Failed to start application: ${error.message}`);
+    server.close(() => process.exit(1));
+    setTimeout(() => process.exit(1), 5000).unref();
   }
 };
 

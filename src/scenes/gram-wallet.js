@@ -1,6 +1,7 @@
 const { Scenes, Markup } = require("telegraf");
 const { message } = require("telegraf/filters");
 const logger = require("../logger");
+const { isMaintenanceEnabled, setMaintenanceEnabled } = require("../modules/maintenance.module");
 const {
   getPaymentConfig,
   savePaymentConfig,
@@ -20,6 +21,7 @@ function walletButtons() {
   return Markup.inlineKeyboard([
     [Markup.button.callback("🔗 Connect Owner Wallet", "gw_connect_wallet")],
     [Markup.button.callback("🪙 Set GRAM Token Master", "gw_connect_token")],
+    [Markup.button.callback("🛠 Maintenance", "gw_maintenance")],
     [Markup.button.callback("🔄 Refresh Status", "gw_status")],
     [Markup.button.callback("❌ Close", "gw_close")],
   ]);
@@ -27,11 +29,13 @@ function walletButtons() {
 
 async function statusText() {
   const config = await getPaymentConfig();
+  const maintenance = await isMaintenanceEnabled();
   return [
     "⚙️ GRAM Wallet Settings",
     "",
     `Owner wallet: ${config.ownerWallet || "Not set"}`,
     `GRAM token master: ${config.jettonMaster || "Not set"}`,
+    `Maintenance: ${maintenance ? "🔴 ON (users blocked)" : "🟢 OFF (bot open)"}`,
     `Rate: ${formatUsd(USD_CENTS_PER_GRAM)} = 1 GRAM`,
     `Minimum: ${formatUsd(MIN_USD_CENTS)}`,
     "",
@@ -42,6 +46,30 @@ async function statusText() {
 gramWalletScene.enter(async (ctx) => {
   if (!isOwner(ctx)) return ctx.scene.leave();
   await ctx.reply(await statusText(), walletButtons());
+});
+
+gramWalletScene.action("gw_maintenance", async (ctx) => {
+  if (!isOwner(ctx)) return ctx.answerCbQuery("Owner only");
+  await ctx.answerCbQuery();
+  const enabled = await isMaintenanceEnabled();
+  return ctx.editMessageText(
+    `🛠 Maintenance Mode\n\nCurrent: ${enabled ? "🔴 ON - users cannot use the bot" : "🟢 OFF - bot is available"}`,
+    Markup.inlineKeyboard([
+      [Markup.button.callback(enabled ? "🟢 Turn OFF" : "🔴 Turn ON", `gw_toggle_maintenance:${enabled ? "off" : "on"}`)],
+      [Markup.button.callback("⬅️ Back", "gw_status")],
+    ]),
+  );
+});
+
+gramWalletScene.action(/^gw_toggle_maintenance:(on|off)$/, async (ctx) => {
+  if (!isOwner(ctx)) return ctx.answerCbQuery("Owner only");
+  const enabled = ctx.match[1] === "on";
+  await setMaintenanceEnabled(enabled);
+  await ctx.answerCbQuery(enabled ? "Maintenance ON" : "Maintenance OFF");
+  return ctx.editMessageText(
+    `${enabled ? "🔴 Maintenance mode ON" : "🟢 Maintenance mode OFF"}\n\n${enabled ? "Users will see: Maintenance ပြုလုပ်နေသည်" : "Users can use the bot again."}`,
+    Markup.inlineKeyboard([[Markup.button.callback("⬅️ Back", "gw_status")]]),
+  );
 });
 
 gramWalletScene.action("gw_status", async (ctx) => {

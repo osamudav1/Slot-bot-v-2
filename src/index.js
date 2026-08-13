@@ -8,6 +8,7 @@ const { getCommandName } = require("./lang/index");
 const handleCaseEvent = require("./handlers/handle.case");
 const { getGroup, createGroupRequest, getTotalGroups, registerGroup } = require("./modules/group.module");
 const { getUser } = require("./modules/user.module");
+const { isMaintenanceEnabled } = require("./modules/maintenance.module");
 
 const User = require("./database/entity/user.entitiy");
 
@@ -131,6 +132,14 @@ const main = async () => {
       
       const ownerId = process.env.OWNER_ID;
       const currentUserId = ctx.from.id.toString();
+
+      // Owner can always access the bot so maintenance can be switched off.
+      if (currentUserId !== String(ownerId || "") && await isMaintenanceEnabled()) {
+        if (ctx.chat?.type === "private") {
+          await ctx.reply("🛠 Maintenance ပြုလုပ်နေသည်။ ခဏနောက် ထပ်ကြိုးစားပါ။");
+        }
+        return;
+      }
 
       // Check for new user (first time start or message)
       const existingUser = await User.findOne({ id: Number(ctx.from.id) });

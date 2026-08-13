@@ -1,4 +1,4 @@
-const { Telegraf, Composer, session, Scenes } = require("telegraf");
+const { Telegraf, Composer, Scenes, session, Markup } = require("telegraf");
 const logger = require("./logger");
 const dotenv = require("dotenv");
 const fs = require("fs");
@@ -8,7 +8,7 @@ const { getCommandName } = require("./lang/index");
 const handleCaseEvent = require("./handlers/handle.case");
 const { getGroup, createGroupRequest, getTotalGroups, registerGroup } = require("./modules/group.module");
 const { getUser } = require("./modules/user.module");
-const { Markup } = require("telegraf");
+
 const User = require("./database/entity/user.entitiy");
 
 const loadCommands = async (bot) => {
@@ -55,6 +55,7 @@ const setBotCommands = async (bot) => {
 
     { command: getCommandName("case") || "case", description: "Open a crate" },
     { command: "gbuy", description: "Exchange cards" },
+    { command: "buys", description: "Buy GRAM with USD" },
   ];
 
   const ownerCommands = [
@@ -68,6 +69,7 @@ const setBotCommands = async (bot) => {
     { command: "catch", description: "Catch Bot ON/OFF" },
     { command: "grab", description: "Grab Bot ON/OFF" },
     { command: "addpool", description: "Add money to payout pool (Owner only)" },
+    { command: "gramwallet", description: "Configure GRAM wallet (Owner only)" },
   ];
 
   // Default commands for everyone

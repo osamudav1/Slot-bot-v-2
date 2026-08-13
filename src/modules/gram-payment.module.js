@@ -69,7 +69,7 @@ async function tonApiGet(path) {
 
 function normalizeAddress(address) { return String(address || "").trim(); }
 
-async function findIncomingGramPayment({ comment, expectedNano }) {
+async function findIncomingGramPayment({ comment, expectedNano, expectedSender }) {
   const config = await assertConfig();
   const encodedAddress = encodeURIComponent(config.ownerWallet);
   const data = await tonApiGet(`/v2/accounts/${encodedAddress}/jettons/history?limit=100`);
@@ -80,14 +80,16 @@ async function findIncomingGramPayment({ comment, expectedNano }) {
     const amount = transfer.amount ?? transfer.jetton_amount ?? transfer.value;
     const transferComment = transfer.comment || transfer.payload || transfer.message || transfer.memo;
     const recipient = transfer.recipient?.address || transfer.destination?.address || transfer.to;
+    const sender = transfer.sender?.address || transfer.source?.address || transfer.from;
     const jetton = transfer.jetton?.address || transfer.jetton_master || transfer.jetton_master_address || transfer.asset?.address;
     const status = transfer.success ?? transfer.status;
     if (!eventId || amount == null || !transferComment || status === false || status === "failed") continue;
-    if (normalizeAddress(recipient) !== normalizeAddress(config.ownerWallet)) continue;
+        if (normalizeAddress(recipient) !== normalizeAddress(config.ownerWallet)) continue;
+    if (expectedSender && normalizeAddress(sender) !== normalizeAddress(expectedSender)) continue;
     if (normalizeAddress(jetton) !== normalizeAddress(config.jettonMaster)) continue;
     if (String(transferComment).trim() !== comment) continue;
     if (BigInt(String(amount)) !== expected) continue;
-    return { txHash: String(eventId), amountNano: String(amount), paidAt: new Date() };
+    return { txHash: String(eventId), amountNano: String(amount), senderWallet: String(sender || expectedSender || ""), paidAt: new Date() };
   }
   return null;
 }

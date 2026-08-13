@@ -3,7 +3,8 @@ const { message } = require("telegraf/filters");
 const logger = require("../logger");
 const { getUser } = require("../modules/user.module");
 const { createPurchase, verifyAndCreditPurchase } = require("../modules/gram-purchase.module");
-const { MIN_USD_CENTS, USD_CENTS_PER_GRAM, formatUsd, formatGramNano, assertConfig, getPaymentConfig } = require("../modules/gram-payment.module");
+const { MIN_USD_CENTS, USD_CENTS_PER_GRAM, formatUsd, formatGramNano, getPaymentConfig, isTonAddress } = require("../modules/gram-payment.module");
+const { getUserGramWallet, setUserGramWallet } = require("../modules/user-wallet.module");
 
 const gramBuyScene = new Scenes.BaseScene("gram-buy");
 const RATE_TEXT = `$${(USD_CENTS_PER_GRAM / 100).toLocaleString("en-US")} = 1 GRAM`;
@@ -22,8 +23,9 @@ function expiresText(date) {
   }).replace(",", "");
 }
 
-function amountButtons() {
+function amountButtons(wallet) {
   return Markup.inlineKeyboard([
+    [Markup.button.callback(wallet ? "✅ Wallet Connected" : "🔗 Connect Telegram Wallet / Tonkeeper", "gram_connect_wallet")],
     PRESET_AMOUNTS.map((cents) => Markup.button.callback(formatUsd(cents), `gram_amount:${cents}`)),
     [Markup.button.callback("✏️ Custom Amount", "gram_custom"), Markup.button.callback("❌ Cancel", "gram_exit")],
   ]);
@@ -35,9 +37,11 @@ async function createInvoice(ctx, usdCents) {
   try {
     if (!Number.isSafeInteger(usdCents) || usdCents < MIN_USD_CENTS) return ctx.reply(`❌ အနည်းဆုံး ${formatUsd(MIN_USD_CENTS)} ကစပြီး ဝယ်လို့ရပါတယ်။`);
     const { ownerWallet } = await getPaymentConfig();
+    const senderWallet = await getUserGramWallet(ctx.from.id);
+    if (!senderWallet) return ctx.reply("🔗 အရင်ဆုံး Connect Telegram Wallet / Tonkeeper ကိုနှိပ်ပြီး wallet address ကို confirm လုပ်ပါ။");
     const user = await getUser({ id: ctx.from.id, firstName: ctx.from.first_name });
-    if (!user) return ctx.reply("❌ User account မတွေ့ပါ။ ထပ်ကြိုးစားပါ။");
-    const purchase = await createPurchase({ userId: ctx.from.id, usdCents });
+    if (!user) return ctx.reply("❌ User account မတွေ့ပါ။");
+    const purchase = await createPurchase({ userId: ctx.from.id, usdCents, senderWallet });
     ctx.scene.state.purchaseId = purchase.purchaseId;
     const invoice = [
       "💵 Top Up Your Balance",
@@ -78,18 +82,46 @@ gramBuyScene.enter(async (ctx) => {
   try {
     const { ownerWallet, jettonMaster } = await getPaymentConfig();
     if (!ownerWallet) throw new Error("Owner GRAM wallet is not configured");
+    const senderWallet = await getUserGramWallet(ctx.from.id);
     const verificationWarning = jettonMaster
       ? ""
       : "\n\n⚠️ Owner က GRAM token master ကို မသတ်မှတ်ရသေးပါ။ Payment verify မလုပ်ခင် `/gramwallet` → Set GRAM Token Master လုပ်ပါ။";
     await ctx.reply(
-      `💵 Top Up Your Balance\n\nRate: ${RATE_TEXT}\nMinimum: ${formatUsd(MIN_USD_CENTS)}${verificationWarning}\n\nဝယ်လိုတဲ့ amount ကို အောက်က button ကနေ ရွေးပါ။`,
-      amountButtons(),
+      `💵 Top Up Your Balance\n\n${senderWallet ? `Connected Wallet: ${senderWallet}` : "Wallet မချိတ်ရသေးပါ"}\nRate: ${RATE_TEXT}\nMinimum: ${formatUsd(MIN_USD_CENTS)}${verificationWarning}\n\nဝယ်လိုတဲ့ amount ကို အောက်က button ကနေ ရွေးပါ။`,
+      amountButtons(senderWallet),
     );
   } catch (error) {
     logger.error(`GRAM buy configuration error: ${error.message}`);
     await ctx.reply("❌ GRAM payment ကို မပြင်ဆင်ရသေးပါ။ Owner ကို ဆက်သွယ်ပါ။");
     return ctx.scene.leave();
   }
+});
+
+gramBuyScene.action("gram_connect_wallet", async (ctx) => {
+  ctx.scene.state.settingWallet = true;
+  await ctx.answerCbQuery();
+  return ctx.editMessageText(
+    "🔗 Connect Telegram Wallet / Tonkeeper\n\nWallet app ထဲက address ကို copy လုပ်ပြီး ဒီ chat ထဲ paste လုပ်ပါ။",
+    Markup.inlineKeyboard([[Markup.button.callback("❌ Cancel", "gram_wallet_cancel")]]),
+  );
+});
+
+gramBuyScene.action("gram_wallet_cancel", async (ctx) => {
+  ctx.scene.state.settingWallet = false;
+  ctx.scene.state.pendingWallet = null;
+  await ctx.answerCbQuery("Cancelled");
+  const wallet = await getUserGramWallet(ctx.from.id);
+  return ctx.editMessageText(`💵 Top Up Your Balance\n\n${wallet ? `Connected Wallet: ${wallet}` : "Wallet မချိတ်ရသေးပါ"}\n\nဝယ်လိုတဲ့ amount ကို ရွေးပါ။`, amountButtons(wallet));
+});
+
+gramBuyScene.action("gram_wallet_confirm", async (ctx) => {
+  const wallet = ctx.scene.state.pendingWallet;
+  if (!wallet) return ctx.answerCbQuery("Wallet address မတွေ့ပါ။");
+  await setUserGramWallet({ userId: ctx.from.id, wallet });
+  ctx.scene.state.settingWallet = false;
+  ctx.scene.state.pendingWallet = null;
+  await ctx.answerCbQuery("Wallet connected");
+  return ctx.editMessageText(`✅ Wallet ချိတ်ပြီးပါပြီ။\n\nConnected Wallet: ${wallet}\n\nဝယ်လိုတဲ့ amount ကို ရွေးပါ။`, amountButtons(wallet));
 });
 
 gramBuyScene.action(/^gram_amount:(\d+)$/, async (ctx) => {
@@ -104,6 +136,12 @@ gramBuyScene.action("gram_custom", async (ctx) => {
 });
 
 gramBuyScene.on(message("text"), async (ctx) => {
+  if (ctx.scene.state.settingWallet) {
+    const wallet = String(ctx.message.text || "").trim();
+    if (!isTonAddress(wallet)) return ctx.reply("❌ TON wallet address မမှန်ပါ။ EQ/UQ သို့မဟုတ် raw 0:<64 hex> address ကို paste လုပ်ပါ။");
+    ctx.scene.state.pendingWallet = wallet;
+    return ctx.reply(`⚠️ Confirm Wallet\n\n\`${wallet}\`\n\nဒီ wallet address မှန်ပါသလား?`, { parse_mode: "Markdown", ...Markup.inlineKeyboard([[Markup.button.callback("✅ Confirm & Save", "gram_wallet_confirm")], [Markup.button.callback("🔁 Paste Again", "gram_connect_wallet"), Markup.button.callback("❌ Cancel", "gram_wallet_cancel")]]) });
+  }
   if (!ctx.scene.state.customAmount) return;
   const input = String(ctx.message.text || "").trim().replace(/^\$/, "").replace(/,/g, "");
   if (!/^\d+(?:\.\d{1,2})?$/.test(input)) return ctx.reply("❌ Amount မမှန်ပါ။ ဥပမာ `2000` လို့ပို့ပါ။");

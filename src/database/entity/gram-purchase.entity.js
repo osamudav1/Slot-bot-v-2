@@ -4,6 +4,7 @@ const gramPurchaseSchema = new mongoose.Schema(
   {
     purchaseId: { type: String, required: true, unique: true, index: true },
     userId: { type: Number, required: true, index: true },
+    senderWallet: { type: String, required: true, index: true },
     usdCents: { type: Number, required: true, min: 100000 },
     gramNano: { type: String, required: true },
     comment: { type: String, required: true, unique: true, index: true },

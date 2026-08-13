@@ -23,6 +23,11 @@ const userSchema = new mongoose.Schema({
     type: String,
     default: "User",
   },
+  gram_wallet: {
+    type: String,
+    default: null,
+    index: true,
+  },
   case: {
     type: Boolean,
     default: false,

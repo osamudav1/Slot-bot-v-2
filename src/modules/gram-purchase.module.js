@@ -9,13 +9,14 @@ const {
   findIncomingGramPayment,
 } = require("./gram-payment.module");
 
-async function createPurchase({ userId, usdCents }) {
+async function createPurchase({ userId, usdCents, senderWallet }) {
   const gramNano = calculateGramNano(usdCents);
   const purchaseId = makePurchaseId();
   const comment = makeComment(purchaseId);
   const purchase = await GramPurchase.create({
     purchaseId,
     userId: Number(userId),
+    senderWallet,
     usdCents,
     gramNano,
     comment,
@@ -38,7 +39,7 @@ async function verifyAndCreditPurchase({ purchaseId }) {
   if (purchase.status === "credited") return { status: "already_credited", purchase };
   if (await expirePurchase(purchase)) return { status: "expired" };
 
-  const payment = await findIncomingGramPayment({ comment: purchase.comment, expectedNano: purchase.gramNano });
+  const payment = await findIncomingGramPayment({ comment: purchase.comment, expectedNano: purchase.gramNano, expectedSender: purchase.senderWallet });
   if (!payment) return { status: "not_found_on_chain" };
 
   const session = await mongoose.startSession();

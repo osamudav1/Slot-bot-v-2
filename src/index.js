@@ -72,6 +72,7 @@ const setBotCommands = async (bot) => {
     { command: "addpool", description: "Add money to payout pool (Owner only)" },
     { command: "gramwallet", description: "Configure GRAM wallet (Owner only)" },
     { command: "maintenance", description: "Maintenance ON/OFF (Owner only)" },
+    { command: "gramdeposits", description: "View GRAM top-up records (Owner only)" },
   ];
 
   // Default commands for everyone

@@ -76,9 +76,8 @@ const compareHands = (left, right) => {
     }
   }
 
-  const leftSuit = SUIT_STRENGTH[left.highestCard?.suit] || 0;
-  const rightSuit = SUIT_STRENGTH[right.highestCard?.suit] || 0;
-  if (leftSuit !== rightSuit) return leftSuit > rightSuit ? 1 : -1;
+  // Same ranked cards are a tie; suit never breaks a Shan tie.
+  // This keeps equal numbers equal while K (13) correctly beats Q (12).
   return 0;
 };
 

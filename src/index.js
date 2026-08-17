@@ -163,8 +163,14 @@ const main = async () => {
         return;
       }
 
-      // Check for new user (first time start or message)
-      const existingUser = await User.findOne({ id: Number(ctx.from.id) });
+      // Check for new user (first time start or message). Do not swallow /start
+      // when the database is temporarily unavailable; command handling can continue.
+      let existingUser = null;
+      try {
+        existingUser = await User.findOne({ id: Number(ctx.from.id) });
+      } catch (userLookupError) {
+        logger.error(`User lookup error: ${userLookupError.message}`);
+      }
       if (!existingUser) {
         if (ownerId) {
           const newUserMsg = `🆕 New User Notification!\n\n` +

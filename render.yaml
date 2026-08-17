@@ -4,9 +4,12 @@ services:
     env: node
     buildCommand: npm install
     startCommand: npm start
+    numInstances: 1
     envVars:
       - key: PORT
         value: 3000
+      - key: BOT_MODE
+        value: webhook
       - key: NODE_VERSION
         value: 20
       - key: LANG

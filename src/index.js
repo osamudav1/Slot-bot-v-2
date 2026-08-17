@@ -114,7 +114,11 @@ const main = async () => {
   const app = express();
   const PORT = process.env.PORT || 3000;
   let botReady = false;
+  let botStarted = false;
+  const publicUrl = String(process.env.WEBHOOK_URL || process.env.RENDER_EXTERNAL_URL || "").replace(/\/$/, "");
+  const useWebhook = process.env.BOT_MODE === "webhook" || Boolean(publicUrl);
 
+  app.use(express.json());
   app.get("/", (req, res) => res.status(200).send("OK"));
   // Liveness endpoint: return 200 as soon as the process is listening.
   // Deployment platforms use this endpoint to decide whether to keep the container alive.
@@ -262,22 +266,39 @@ const main = async () => {
       await handleCaseEvent(ctx);
     });
 
-    // 🆕 LAUNCH - pending updates တွေကို ရှင်းပစ်မယ်
-    await bot.launch({
-      dropPendingUpdates: true
-    });
+    if (useWebhook) {
+      if (!publicUrl) {
+        throw new Error("BOT_MODE=webhook requires WEBHOOK_URL or RENDER_EXTERNAL_URL");
+      }
+      const webhookPath = "/telegram/webhook";
+      app.post(webhookPath, bot.webhookCallback(webhookPath));
+      await bot.telegram.setWebhook(`${publicUrl}${webhookPath}`, {
+        drop_pending_updates: true,
+      });
+      botStarted = true;
+      logger.success(`Telegram bot started in webhook mode: ${publicUrl}${webhookPath}`);
+    } else {
+      // Polling is kept for local development. Render uses webhook mode to avoid 409 conflicts during deploys.
+      await bot.launch({ dropPendingUpdates: true });
+      botStarted = true;
+      logger.success("Telegram bot started in polling mode");
+    }
 
     botReady = true;
-    logger.success("Telegram bot started");
 
-    process.once("SIGINT", () => {
-      bot.stop("SIGINT");
-      server.close();
-    });
-    process.once("SIGTERM", () => {
-      bot.stop("SIGTERM");
-      server.close();
-    });
+    const shutdown = async (signal) => {
+      try {
+        if (botStarted && !useWebhook) bot.stop(signal);
+        if (botStarted && useWebhook) await bot.telegram.deleteWebhook({ drop_pending_updates: false });
+      } catch (error) {
+        logger.error(`Shutdown error: ${error.message}`);
+      } finally {
+        server.close(() => process.exit(0));
+        setTimeout(() => process.exit(0), 5000).unref();
+      }
+    };
+    process.once("SIGINT", () => shutdown("SIGINT"));
+    process.once("SIGTERM", () => shutdown("SIGTERM"));
 
   } catch (error) {
     botReady = false;

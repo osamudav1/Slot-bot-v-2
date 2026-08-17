@@ -158,38 +158,45 @@ const main = async () => {
       const currentUserId = ctx.from.id.toString();
 
       // Owner can always access the bot so maintenance can be switched off.
-      if (currentUserId !== String(ownerId || "") && await isMaintenanceEnabled()) {
+      // Do not let a stalled MongoDB query block Telegram updates indefinitely.
+      let maintenanceEnabled = false;
+      if (currentUserId !== String(ownerId || "")) {
+        try {
+          maintenanceEnabled = await Promise.race([
+            isMaintenanceEnabled(),
+            new Promise((resolve) => setTimeout(() => resolve(false), 2500)),
+          ]);
+        } catch (maintenanceError) {
+          logger.error(`Maintenance lookup error: ${maintenanceError.message}`);
+        }
+      }
+      if (maintenanceEnabled) {
         if (ctx.chat?.type === "private") {
           await ctx.reply("🛠 Maintenance ပြုလုပ်နေသည်။ ခဏနောက် ထပ်ကြိုးစားပါ။");
         }
         return;
       }
 
-      // Check for new user (first time start or message). Do not swallow /start
-      // when the database is temporarily unavailable; command handling can continue.
-      let existingUser = null;
-      try {
-        existingUser = await User.findOne({ id: Number(ctx.from.id) });
-      } catch (userLookupError) {
-        logger.error(`User lookup error: ${userLookupError.message}`);
-      }
-      if (!existingUser) {
-        if (ownerId) {
-          const newUserMsg = `🆕 New User Notification!\n\n` +
-            `User Name: ${ctx.from.first_name}${ctx.from.last_name ? " " + ctx.from.last_name : ""}\n` +
-            `User ID: ${ctx.from.id}\n` +
-            `Username: @${ctx.from.username || "N/A"}`;
-          
-          await bot.telegram.sendMessage(ownerId, newUserMsg).catch(err => logger.error("Failed to notify owner about new user: " + err.message));
-        }
-      }
+      // User synchronization and first-user notification must never delay /start.
+      // They run in the background while the command handler continues immediately.
+      User.findOne({ id: Number(ctx.from.id) })
+        .then((existingUser) => {
+          if (!existingUser && ownerId) {
+            const newUserMsg = `🆕 New User Notification!\n\n` +
+              `User Name: ${ctx.from.first_name}${ctx.from.last_name ? " " + ctx.from.last_name : ""}\n` +
+              `User ID: ${ctx.from.id}\n` +
+              `Username: @${ctx.from.username || "N/A"}`;
+            return bot.telegram.sendMessage(ownerId, newUserMsg);
+          }
+        })
+        .catch((userLookupError) => logger.error(`User lookup error: ${userLookupError.message}`));
 
-      // Update user info in background
-      getUser({ id: ctx.from.id, firstName: ctx.from.first_name }).catch(err => logger.error("User sync error: " + err.message));
+      getUser({ id: ctx.from.id, firstName: ctx.from.first_name })
+        .catch(err => logger.error("User sync error: " + err.message));
 
-      if (ctx.chat.type === "private") {
+      if (ctx.chat?.type === "private") {
         return next();
-      } else if (ctx.chat.type === "group" || ctx.chat.type === "supergroup") {
+      } else if (ctx.chat?.type === "group" || ctx.chat?.type === "supergroup") {
         const group = await getGroup(ctx.chat.id.toString());
         const text = ctx.message?.text || "";
         const isRegisterCommand = text.startsWith("/register");

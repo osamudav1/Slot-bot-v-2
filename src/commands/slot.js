@@ -25,7 +25,7 @@ const DEFAULT_MIN_WIN   = 20;
 // Values are stored in cents throughout the bot.
 const POOL_SAFETY_THRESHOLD = 500000;
 const POOL_RATE_RECOVERY_TARGET = 1000000; // full base rate is reached gradually by $10,000
-const POOL_SAFETY_MIN_WIN = 5;
+const POOL_SAFETY_MIN_WIN = 0; // $0 pool => 0% normal win + 2% jackpot = 98% loss
 
 // Runtime globals (owner-adjustable)
 const getCfg = () => ({
@@ -56,15 +56,16 @@ const getWLJ = (userId, poolBalance = POOL_RATE_RECOVERY_TARGET) => {
   const poolWinRate = POOL_SAFETY_MIN_WIN + ((cfg.win - POOL_SAFETY_MIN_WIN) * poolRatio);
   let winRate = Math.min(cfg.maxWin, poolWinRate);
 
-  if (hist.length >= 3 && hist.slice(-3).every(r => r === "L")) {
-    // 3+ consecutive losses → boost win chance
+  const lowPool = Number(poolBalance) < POOL_SAFETY_THRESHOLD;
+  if (!lowPool && hist.length >= 3 && hist.slice(-3).every(r => r === "L")) {
+    // 3+ consecutive losses → boost win chance only after the reserve is safe.
     winRate = Math.min(winRate + cfg.boost, cfg.maxWin);
-  } else if (hist.length >= 2 && hist.slice(-2).every(r => r === "W")) {
-    // 2+ consecutive wins → reduce win chance
+  } else if (!lowPool && hist.length >= 2 && hist.slice(-2).every(r => r === "W")) {
+    // 2+ consecutive wins → reduce win chance only after the reserve is safe.
     winRate = Math.max(winRate - cfg.reduce, cfg.minWin);
   }
 
-  const loseRate = 100 - cfg.jackpot - winRate;
+  const loseRate = Math.max(0, 100 - cfg.jackpot - winRate);
 
   return { W: winRate, L: loseRate, J: cfg.jackpot };
 };

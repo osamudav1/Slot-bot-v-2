@@ -4,10 +4,10 @@ const { getString, getCommandName } = require("../lang/index");
 const User = require("../database/entity/user.entitiy");
 const logger = require("../logger");
 const { getPoolBalance, addToPool, subtractFromPool } = require("../modules/pool.module");
+const { getOwnerSettings } = require("../modules/owner-settings.module");
 
 const activeSpins = new Set();
 const lastSpinTime = new Map();
-const COOLDOWN_TIME = 8000; // 8 seconds
 
 // ─── WLJ CONFIG ──────────────────────────────────────────────────────────────
 // Defaults — owner can change at runtime via /wlj command
@@ -93,9 +93,20 @@ const slotHandler = async (ctx) => {
     }
 
     const ownerId = process.env.OWNER_ID;
+    let ownerSettings;
+    try {
+      ownerSettings = await getOwnerSettings();
+    } catch (settingsError) {
+      logger.error(`Slot settings error: ${settingsError.message}`);
+      ownerSettings = { winRate: DEFAULT_WIN, minBet: 2000, maxBet: 50000, cooldown: 8000, pauseSlot: false };
+    }
+    if (ownerSettings.pauseSlot && ownerId !== userId.toString()) {
+      return ctx.reply("🛠 Slot game is temporarily paused by owner.").catch(() => {});
+    }
+
     const now = Date.now();
     if (ownerId !== userId.toString() && lastSpinTime.has(userId)) {
-      const timeLeft = Math.ceil((lastSpinTime.get(userId) + COOLDOWN_TIME - now) / 1000);
+      const timeLeft = Math.ceil((lastSpinTime.get(userId) + ownerSettings.cooldown - now) / 1000);
       if (timeLeft > 0) {
         return ctx.reply(`⏳ Please wait ${timeLeft} seconds before spinning again!`).catch(() => {});
       }
@@ -107,11 +118,11 @@ const slotHandler = async (ctx) => {
     if (isNaN(betAmount) || betAmount <= 0) {
       return ctx.reply("Usage: /slot <amount_in_dollars>\nExample: /slot 1.5");
     }
-    if (betAmount < 2000) {
-      return ctx.reply("🔴 အနည်းဆုံး 20 $ လောင်းရပါမည်။");
+    if (betAmount < ownerSettings.minBet) {
+      return ctx.reply(`🔴 အနည်းဆုံး ${(ownerSettings.minBet / 100).toFixed(2)} $ လောင်းရပါမည်။`);
     }
-    if (betAmount > 50000) {
-      return ctx.reply("🔴 အများဆုံး 500 $ ထိသာ လောင်းနိုင်ပါသည်။");
+    if (betAmount > ownerSettings.maxBet) {
+      return ctx.reply(`🔴 အများဆုံး ${(ownerSettings.maxBet / 100).toFixed(2)} $ ထိသာ လောင်းနိုင်ပါသည်။`);
     }
 
     // Reserve this user before any async work so duplicate spins cannot overlap.
@@ -164,6 +175,8 @@ const slotHandler = async (ctx) => {
 
     // ─── Determine outcome via WLJ ─────────────────────────────────────────
     const poolBalance = await getPoolBalance();
+    // Keep the existing WLJ algorithm but apply the persisted owner base win rate.
+    global.slotWin = ownerSettings.winRate;
     const wlj    = getWLJ(userId, poolBalance);
     let random = Math.random() * 100;
 

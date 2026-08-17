@@ -4,10 +4,10 @@ const { getString, getCommandName } = require("../lang/index");
 const User = require("../database/entity/user.entitiy");
 const logger = require("../logger");
 const { addToPool, subtractFromPool } = require("../modules/pool.module");
+const { getOwnerSettings } = require("../modules/owner-settings.module");
 
 const activeGames = new Map();
 const lastShanTime = new Map();
-const COOLDOWN_TIME = 8000;
 const GAME_TIMEOUT = 60000;
 
 const SUITS = ["♠️", "♥️", "♣️", "♦️"];
@@ -153,17 +153,28 @@ const shanHandler = async (ctx) => {
     if (activeGames.has(gameKey)) return ctx.reply("ဂိမ်းဆော့နေဆဲဖြစ်ပါသည်။ ခဏစောင့်ပေးပါ။").catch(() => {});
 
     const ownerId = process.env.OWNER_ID;
+    let ownerSettings;
+    try {
+      ownerSettings = await getOwnerSettings();
+    } catch (settingsError) {
+      logger.error(`Shan settings error: ${settingsError.message}`);
+      ownerSettings = { minBet: 2000, maxBet: 50000, cooldown: 8000, pauseShan: false };
+    }
+    if (ownerSettings.pauseShan && ownerId !== userId.toString()) {
+      return ctx.reply("🛠 Shan game is temporarily paused by owner.").catch(() => {});
+    }
+
     const now = Date.now();
     if (ownerId !== userId.toString() && lastShanTime.has(userId)) {
-      const timeLeft = Math.ceil((lastShanTime.get(userId) + COOLDOWN_TIME - now) / 1000);
+      const timeLeft = Math.ceil((lastShanTime.get(userId) + ownerSettings.cooldown - now) / 1000);
       if (timeLeft > 0) return ctx.reply(`⏳ Please wait ${timeLeft} seconds before playing again!`).catch(() => {});
     }
 
     const args = (ctx.message.text || "").trim().split(/\s+/);
     const betAmount = args[1] ? Math.floor(Number(args[1]) * 100) : 100;
     if (!Number.isFinite(betAmount) || betAmount <= 0) return ctx.reply("အသုံးပြုပုံ: /shan <ပမာဏ_ဒေါ်လာ>\nဥပမာ: /shan 20");
-    if (betAmount < 2000) return ctx.reply("🔴 အနည်းဆုံး $20 လောင်းရပါမည်။");
-    if (betAmount > 50000) return ctx.reply("🔴 အများဆုံး $500 ထိသာ လောင်းနိုင်ပါသည်။");
+    if (betAmount < ownerSettings.minBet) return ctx.reply(`🔴 အနည်းဆုံး $${(ownerSettings.minBet / 100).toFixed(2)} လောင်းရပါမည်။`);
+    if (betAmount > ownerSettings.maxBet) return ctx.reply(`🔴 အများဆုံး $${(ownerSettings.maxBet / 100).toFixed(2)} ထိသာ လောင်းနိုင်ပါသည်။`);
 
     const user = await User.findOneAndUpdate(
       { id: Number(userId), coins: { $gte: betAmount } },

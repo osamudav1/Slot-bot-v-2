@@ -43,62 +43,80 @@ const setBotCommands = async (bot) => {
   const ownerId = process.env.OWNER_ID;
 
   const userCommands = [
-    { command: "start", description: "Start the bot" },
-    { command: "help", description: "View purchase rules and help" },
-    { command: getCommandName("bank") || "wallet", description: "Check both wallet balances" },
-    { command: "bal", description: "Check both wallet balances" },
-    { command: "exchange", description: "Move funds between Waifu and Slot wallets" },
-    { command: getCommandName("salary") || "salary", description: "Get your salary" },
-    { command: getCommandName("slot") || "slot", description: "Play slot machine" },
-    { command: getCommandName("shan") || "shan", description: "Play Shan Ko Mee" },
+    { command: "start", description: "Bot စတင်ရန်" },
+    { command: "help", description: "စည်းမျဉ်းနှင့် အကူအညီကြည့်ရန်" },
+    { command: getCommandName("bank") || "wallet", description: "Wallet နှစ်ခုလုံးကြည့်ရန်" },
+    { command: "bal", description: "Wallet နှစ်ခုလုံးကြည့်ရန်" },
+    { command: "exchange", description: "Waifu နှင့် Slot Wallet ငွေလွှဲရန်" },
+    { command: getCommandName("salary") || "salary", description: "လစာရယူရန်" },
+    { command: getCommandName("slot") || "slot", description: "Slot ကစားရန်" },
+    { command: getCommandName("shan") || "shan", description: "Shan Ko Mee ကစားရန်" },
 
-    { command: "daily", description: "Claim your daily reward" },
-    { command: "mgift", description: "Send money (Reply to user)" },
-    { command: getCommandName("ranking") || "ranking", description: "View top players" },
+    { command: "daily", description: "နေ့စဉ်ဆုကြေးရယူရန်" },
+    { command: "mgift", description: "ငွေလွှဲရန် (User ကို Reply)" },
+    { command: getCommandName("ranking") || "ranking", description: "ထိပ်တန်းကစားသူများကြည့်ရန်" },
 
-    { command: getCommandName("case") || "case", description: "Open a crate" },
-    { command: "gbuy", description: "Exchange cards" },
-    { command: "buys", description: "Buy GRAM with USD" },
+    { command: getCommandName("case") || "case", description: "Case ဖွင့်ရန်" },
+    { command: "gbuy", description: "Card လဲလှယ်ရန်" },
+    { command: "buys", description: "USD ဖြင့် GRAM ဝယ်ရန်" },
   ];
 
   const ownerCommands = [
     ...userCommands,
-    { command: getCommandName("add") || "add", description: "Add/Remove balance (Owner only)" },
-    { command: "register", description: "Activate group (Owner only)" },
-    { command: "broadcast", description: "Broadcast message to all users" },
-    { command: "logs", description: "View user list" },
-    { command: "glogs", description: "View group list" },
-    { command: "guess", description: "Guess Bot ON/OFF" },
-    { command: "catch", description: "Catch Bot ON/OFF" },
-    { command: "grab", description: "Grab Bot ON/OFF" },
-    { command: "addpool", description: "Add money to payout pool (Owner only)" },
-    { command: "ownerhelp", description: "Owner control panel (Owner only)" },
-    { command: "pool", description: "View payout pool (Owner only)" },
-    { command: "setwin", description: "Set base win rate (Owner only)" },
-    { command: "setlimit", description: "Set bet limits (Owner only)" },
-    { command: "setcooldown", description: "Set game cooldown (Owner only)" },
-    { command: "pausegame", description: "Pause or resume games (Owner only)" },
-    { command: "user", description: "View user balance (Owner only)" },
-    { command: "adjust", description: "Adjust user balance (Owner only)" },
-    { command: "stats", description: "View bot statistics (Owner only)" },
-    { command: "resetcontrol", description: "Reset owner controls (Owner only)" },
-    { command: "gramwallet", description: "Configure GRAM wallet (Owner only)" },
-    { command: "maintenance", description: "Maintenance ON/OFF (Owner only)" },
-    { command: "gramdeposits", description: "View GRAM top-up records (Owner only)" },
+    { command: getCommandName("add") || "add", description: "Balance ထည့်/နုတ်ရန် (Owner)" },
+    { command: "register", description: "Group ဖွင့်ရန် (Owner)" },
+    { command: "broadcast", description: "User အားလုံးထံ စာပို့ရန်" },
+    { command: "logs", description: "User စာရင်းကြည့်ရန်" },
+    { command: "glogs", description: "Group စာရင်းကြည့်ရန်" },
+    { command: "guess", description: "Guess Bot ဖွင့်/ပိတ်ရန်" },
+    { command: "catch", description: "Catch Bot ဖွင့်/ပိတ်ရန်" },
+    { command: "grab", description: "Grab Bot ဖွင့်/ပိတ်ရန်" },
+    { command: "addpool", description: "Payout Pool ငွေထည့်ရန်" },
+    { command: "ownerhelp", description: "Owner ထိန်းချုပ်မှုများ" },
+    { command: "pool", description: "Payout Pool ကြည့်ရန်" },
+    { command: "setwin", description: "အနိုင်ရနှုန်းသတ်မှတ်ရန်" },
+    { command: "setlimit", description: "Bet Limit သတ်မှတ်ရန်" },
+    { command: "setcooldown", description: "Cooldown သတ်မှတ်ရန်" },
+    { command: "pausegame", description: "Game ခဏရပ်/ပြန်ဖွင့်ရန်" },
+    { command: "user", description: "User Balance ကြည့်ရန်" },
+    { command: "adjust", description: "User Balance ပြင်ရန်" },
+    { command: "stats", description: "Bot အချက်အလက်ကြည့်ရန်" },
+    { command: "resetcontrol", description: "ထိန်းချုပ်မှု Reset လုပ်ရန်" },
+    { command: "gramwallet", description: "GRAM Wallet သတ်မှတ်ရန်" },
+    { command: "maintenance", description: "Maintenance ဖွင့်/ပိတ်ရန်" },
+    { command: "gramdeposits", description: "GRAM ငွေဖြည့်မှတ်တမ်းကြည့်ရန်" },
   ];
 
-  // Default commands for everyone
-  await bot.telegram.setMyCommands(userCommands);
+  // Clear the old default scope first; otherwise Telegram may keep showing
+  // commands that were registered before owner/user scopes were separated.
+  await bot.telegram.deleteMyCommands().catch((err) =>
+    logger.error(`Failed to clear default command scope: ${err.message}`)
+  );
 
-  // Special commands for the owner
-  if (ownerId) {
+  // Explicit scopes prevent old/default owner menus from leaking to users.
+  const userScopes = [
+    { type: "all_private_chats" },
+    { type: "all_group_chats" },
+  ];
+  for (const scope of userScopes) {
+    await bot.telegram.deleteMyCommands({ scope }).catch((err) =>
+      logger.error(`Failed to clear command scope ${scope.type}: ${err.message}`)
+    );
+    await bot.telegram.setMyCommands(userCommands, { scope });
+  }
+
+  // Owner gets the extended menu only in the owner's private chat.
+  const ownerChatId = Number(ownerId);
+  if (Number.isSafeInteger(ownerChatId)) {
     try {
       await bot.telegram.setMyCommands(ownerCommands, {
-        scope: { type: "chat", chat_id: parseInt(ownerId) },
+        scope: { type: "chat", chat_id: ownerChatId },
       });
     } catch (err) {
       logger.error(`Failed to set owner commands: ${err.message}`);
     }
+  } else if (ownerId) {
+    logger.warn("OWNER_ID must be a numeric Telegram user ID; owner menu was not configured.");
   }
 
   logger.success("Bot commands menu updated with owner separation");

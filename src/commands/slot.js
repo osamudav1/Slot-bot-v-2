@@ -240,20 +240,17 @@ const slotHandler = async (ctx) => {
       );
     }
 
-    setTimeout(async () => {
-      try {
-        await ctx.telegram.editMessageText(
-          ctx.chat.id,
-          waitMsg.message_id,
-          null,
-          getDesign(result1, result2, result3, result4, betAmount, winAmount, profit, status)
-        ).catch(err => logger.error("Edit result error: " + err.message));
-      } catch (err) {
-        logger.error("Timeout result error: " + err.message);
-      } finally {
-        activeSpins.delete(userId);
-      }
-    }, 1500);
+    // Show the final result immediately after settlement; no artificial delay.
+    try {
+      await ctx.telegram.editMessageText(
+        ctx.chat.id,
+        waitMsg.message_id,
+        null,
+        getDesign(result1, result2, result3, result4, betAmount, winAmount, profit, status)
+      ).catch(err => logger.error("Edit result error: " + err.message));
+    } finally {
+      activeSpins.delete(userId);
+    }
 
   } catch (err) {
     logger.error("Slot handler error: " + err.stack);

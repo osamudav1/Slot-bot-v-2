@@ -21,10 +21,11 @@ const DEFAULT_REDUCE    = 10;   // -Win% after 2+ consec. wins
 const DEFAULT_MAX_WIN   = 55;
 const DEFAULT_MIN_WIN   = 20;
 
-// Pool safety: below $2,000, scale the normal win rate down toward a guarded floor.
+// Pool safety: below $5,000, reduce Win%; above it, recover gradually.
 // Values are stored in cents throughout the bot.
-const POOL_RECOVERY_TARGET = 200000;
-const POOL_SAFETY_MIN_WIN   = 5;
+const POOL_SAFETY_THRESHOLD = 500000;
+const POOL_RATE_RECOVERY_TARGET = 1000000; // full base rate is reached gradually by $10,000
+const POOL_SAFETY_MIN_WIN = 5;
 
 // Runtime globals (owner-adjustable)
 const getCfg = () => ({
@@ -47,11 +48,11 @@ const userHistory = new Map(); // userId → ['W','L','W',...]
 const HISTORY_SIZE = 5;
 
 // ─── WLJ RATE CALCULATOR ─────────────────────────────────────────────────────
-const getWLJ = (userId, poolBalance = POOL_RECOVERY_TARGET) => {
+const getWLJ = (userId, poolBalance = POOL_RATE_RECOVERY_TARGET) => {
   const hist = userHistory.get(userId) || [];
   const cfg  = getCfg();
 
-  const poolRatio = Math.max(0, Math.min(1, Number(poolBalance) / POOL_RECOVERY_TARGET));
+  const poolRatio = Math.max(0, Math.min(1, Number(poolBalance) / POOL_RATE_RECOVERY_TARGET));
   const poolWinRate = POOL_SAFETY_MIN_WIN + ((cfg.win - POOL_SAFETY_MIN_WIN) * poolRatio);
   let winRate = Math.min(cfg.maxWin, poolWinRate);
 
@@ -332,7 +333,8 @@ const wljHandler = async (ctx) => {
     ``,
     `📊 Base Rates`,
     `   Win  : ${cfg.win}%`,
-    `   Pool safety: below $${(POOL_RECOVERY_TARGET / 100).toFixed(0)} scales Win% toward ${POOL_SAFETY_MIN_WIN}%`,
+    `   Pool safety: below $${(POOL_SAFETY_THRESHOLD / 100).toFixed(0)} scales Win% toward ${POOL_SAFETY_MIN_WIN}%`,
+    `   Recovery: Win% rises gradually until $${(POOL_RATE_RECOVERY_TARGET / 100).toFixed(0)} pool`,
     `   Lose : ${lose}%`,
     `   💎   : ${cfg.jackpot}% (${MULTI_JACKPOT}x)`,
     ``,

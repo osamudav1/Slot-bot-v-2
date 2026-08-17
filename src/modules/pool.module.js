@@ -7,6 +7,15 @@ const toCents = (amount) => {
   return Number.isFinite(value) ? Math.max(0, Math.floor(value)) : 0;
 };
 
+const numericValue = {
+  $convert: {
+    input: { $ifNull: ["$value", 0] },
+    to: "long",
+    onError: 0,
+    onNull: 0,
+  },
+};
+
 const getPoolBalance = async () => {
   const config = await Config.findOne({ key: POOL_KEY });
   const balance = toCents(config?.value);
@@ -23,29 +32,26 @@ const addToPool = async (amount) => {
   const cents = toCents(amount);
   if (cents === 0) return getPoolBalance();
 
-  const current = await getPoolBalance();
-  const next = current + cents;
-  await Config.findOneAndUpdate(
+  // Atomic increment: concurrent losses are accumulated instead of overwriting one another.
+  const updated = await Config.findOneAndUpdate(
     { key: POOL_KEY },
-    { $set: { value: next } },
+    [{ $set: { value: { $add: [numericValue, cents] } } }],
     { upsert: true, new: true }
   );
-  return next;
+  return toCents(updated?.value);
 };
 
 const subtractFromPool = async (amount) => {
   const cents = toCents(amount);
   if (cents === 0) return getPoolBalance();
 
-  // Clamp at zero instead of allowing a payout to create a negative pool.
-  const current = await getPoolBalance();
-  const next = Math.max(0, current - cents);
-  await Config.findOneAndUpdate(
+  // Atomic subtraction with a zero floor: concurrent wins cannot create a negative pool.
+  const updated = await Config.findOneAndUpdate(
     { key: POOL_KEY },
-    { $set: { value: next } },
+    [{ $set: { value: { $max: [0, { $subtract: [numericValue, cents] }] } } }],
     { upsert: true, new: true }
   );
-  return next;
+  return toCents(updated?.value);
 };
 
 module.exports = {

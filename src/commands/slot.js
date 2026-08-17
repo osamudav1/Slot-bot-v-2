@@ -131,24 +131,21 @@ const slotHandler = async (ctx) => {
       .replace(/>/g, "&gt;");
     const getDesign = (s1, s2, s3, s4, bet = 0, win = 0, profit = 0, status = "") => {
       const resultStatus = profit > 0 ? "Win ✅" : "Lose ❌";
-      return `<pre>🎰  GUESS SLOT V2.0  🎰
+      return `<pre>🎰 GUESS SLOT V2.0 🎰
 
-✦ ━━━━━━━━━━━━━━━━━━━ ✦
+✦ ━━━━━━━━━━━━━━━━━ ✦
 
-┏━━━━━━━━━━━━━━━━━━━━┓
-┃  ${s1}  │  ${s2}  │  ${s3}  │  ${s4}  ┃
-┗━━━━━━━━━━━━━━━━━━━━┛
+┏━━━━━━━━━━━━━━━━━━┓
+┃ ${s1} │ ${s2} │ ${s3} │ ${s4} ┃
+┗━━━━━━━━━━━━━━━━━━┛
 
-✦ ━━━━━━━━━━━━━━━━━━━ ✦
+✦ ━━━━━━━━━━━━━━━━━ ✦
 
-╭────────────────────╮
-│ 💵 Bet     : ${_usd(bet).padStart(10)} │
-│ 💰 Win     : ${_usd(win).padStart(10)} │
-│ 📊 Profit  : ${_usd(profit).padStart(10)} │
-│ 🎯 Result  : ${escapeHtml(resultStatus).padStart(10)} │
-╰────────────────────╯
+💵 Bet    : ${_usd(bet).padStart(10)}
+💰 Win    : ${_usd(win).padStart(10)}
+📊 Profit : ${_usd(profit).padStart(10)} [${escapeHtml(resultStatus)}]
 
-✦ ━━━━━━━━━━━━━━━━━━━ ✦</pre>`;
+✦ ━━━━━━━━━━━━━━━━━ ✦</pre>`;
     };
 
     const slots      = ["🍒", "🍎", "🍐", "🍉", "🍊", "🍌", "🍇", "🍓", "🫐", "🍈", "🍍", "🥭", "🍑", "🥝"];

@@ -11,6 +11,12 @@ const userSchema = new mongoose.Schema({
     type: Number,
     default: 0,
   },
+  // Gambling-only wallet; amounts are stored in cents like coins.
+  slot_wallet: {
+    type: Number,
+    default: 0,
+    min: 0,
+  },
   last_payback_time: {
     type: Number,
     default: 0,

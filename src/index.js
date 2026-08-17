@@ -45,7 +45,9 @@ const setBotCommands = async (bot) => {
   const userCommands = [
     { command: "start", description: "Start the bot" },
     { command: "help", description: "View purchase rules and help" },
-    { command: getCommandName("bank") || "wallet", description: "Check your balance" },
+    { command: getCommandName("bank") || "wallet", description: "Check both wallet balances" },
+    { command: "bal", description: "Check both wallet balances" },
+    { command: "exchange", description: "Move funds between Waifu and Slot wallets" },
     { command: getCommandName("salary") || "salary", description: "Get your salary" },
     { command: getCommandName("slot") || "slot", description: "Play slot machine" },
     { command: getCommandName("shan") || "shan", description: "Play Shan Ko Mee" },

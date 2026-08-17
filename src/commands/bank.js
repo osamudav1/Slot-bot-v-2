@@ -15,17 +15,22 @@ const getBadge = (coins) => {
   return "💀 GOD LEVEL & Mythic";
 };
 
-module.exports = Composer.command(getCommandName("bank"), async (ctx) => {
+const walletHandler = async (ctx) => {
   const user = await getUser({ id: ctx.from.id, firstName: ctx.from.first_name });
   const coins = user?.coins || 0;
+  const slotWallet = user?.slot_wallet || 0;
   const badge = getBadge(coins);
   const firstName = ctx.from.first_name;
+  const formatBalance = (amount) => (amount / 100).toLocaleString(undefined, {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
 
-  // Format balance with commas
-  const formattedBalance = (coins / 100).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const response = `🏦『 ${firstName} ᴡᴀʟʟᴇᴛ 』\n` +
+    `💰 Waifu ⇢ $${formatBalance(coins)}\n` +
+    `🎰 Slot  ⇢ $${formatBalance(slotWallet)}\n` +
+    `💎 Rank ⇢ ${badge}`;
 
-  const response = `🏦『 ${firstName} ᴡᴀʟʟᴇᴛ 』\n💰 $ ⇢ ${formattedBalance}$\n💎 Rank ⇢ ${badge}`;
-  
   try {
     const photos = await ctx.telegram.getUserProfilePhotos(ctx.from.id, 0, 1);
     if (photos.total_count > 0) {
@@ -36,5 +41,11 @@ module.exports = Composer.command(getCommandName("bank"), async (ctx) => {
     console.error("Error getting user profile photo:", err);
   }
 
-  await ctx.reply(response);
-});
+  return ctx.reply(response);
+};
+
+const composer = new Composer();
+composer.command(getCommandName("bank") || "wallet", walletHandler);
+composer.command("bal", walletHandler);
+
+module.exports = composer;

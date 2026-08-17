@@ -169,8 +169,8 @@ const slotHandler = async (ctx) => {
     waitMsg = await ctx.reply("⚡️", { reply_to_message_id: ctx.message.message_id });
 
     const user = await User.findOneAndUpdate(
-      { id: Number(userId), coins: { $gte: betAmount } },
-      { $inc: { coins: -betAmount } },
+      { id: Number(userId), slot_wallet: { $gte: betAmount } },
+      { $inc: { slot_wallet: -betAmount } },
       { new: true }
     );
 
@@ -301,7 +301,7 @@ const slotHandler = async (ctx) => {
     if (winAmount > 0) {
       const creditedUser = await User.findOneAndUpdate(
         { id: Number(userId) },
-        { $inc: { coins: winAmount } }
+        { $inc: { slot_wallet: winAmount } }
       );
       if (!creditedUser) throw new Error("User win credit failed");
       creditedWin = true;
@@ -337,7 +337,7 @@ const slotHandler = async (ctx) => {
     if (debited && !creditedWin && !settled) {
       await User.findOneAndUpdate(
         { id: Number(userId) },
-        { $inc: { coins: betAmount } }
+        { $inc: { slot_wallet: betAmount } }
       ).catch(refundErr => logger.error("Slot refund error: " + refundErr.message));
     }
 

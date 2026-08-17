@@ -12,10 +12,16 @@ const getUser = async ({ id, firstName }) => {
     { upsert: true, new: true, setDefaultsOnInsert: true }
   );
 
+  let needsSave = false;
   if (!user.coins && user.coins !== 0) {
     user.coins = 0;
-    await user.save();
+    needsSave = true;
   }
+  if (!user.slot_wallet && user.slot_wallet !== 0) {
+    user.slot_wallet = 0;
+    needsSave = true;
+  }
+  if (needsSave) await user.save();
 
   return user;
 };

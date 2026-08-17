@@ -125,8 +125,31 @@ const slotHandler = async (ctx) => {
     const waitMsg = await ctx.reply("⚡️", { reply_to_message_id: ctx.message.message_id });
 
     const _usd = (cents) => `$${(cents / 100).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-    const getDesign = (s1, s2, s3, s4, bet = 0, win = 0, profit = 0, status = "") =>
-      `🎰 GUESS SLOT V2.0\n✦ ━━━━━━━━━━━ ✦\n\n┏━━━━━━━━━━━━━┓\n┃ ${s1} | ${s2} | ${s3} | ${s4} ┃\n┗━━━━━━━━━━━━━┛\n\n✦ ━━━━━━━━━━━ ✦\n🎰 SLOT DETAILS\n✦ ━━━━━━━━━━━ ✦\n💵 Bet     : ${_usd(bet)}\n💰 Win     : ${_usd(win)}\n📊 Profit  : ${_usd(profit)} [${status}]\n✦ ━━━━━━━━━━━ ✦`;
+    const escapeHtml = (value) => String(value)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;");
+    const getDesign = (s1, s2, s3, s4, bet = 0, win = 0, profit = 0, status = "") => {
+      const resultStatus = profit > 0 ? "Win ✅" : "Lose ❌";
+      return `<pre>🎰  GUESS SLOT V2.0  🎰
+
+✦ ━━━━━━━━━━━━━━━━━━━ ✦
+
+┏━━━━━━━━━━━━━━━━━━━━┓
+┃  ${s1}  │  ${s2}  │  ${s3}  │  ${s4}  ┃
+┗━━━━━━━━━━━━━━━━━━━━┛
+
+✦ ━━━━━━━━━━━━━━━━━━━ ✦
+
+╭────────────────────╮
+│ 💵 Bet     : ${_usd(bet).padStart(10)} │
+│ 💰 Win     : ${_usd(win).padStart(10)} │
+│ 📊 Profit  : ${_usd(profit).padStart(10)} │
+│ 🎯 Result  : ${escapeHtml(resultStatus).padStart(10)} │
+╰────────────────────╯
+
+✦ ━━━━━━━━━━━━━━━━━━━ ✦</pre>`;
+    };
 
     const slots      = ["🍒", "🍎", "🍐", "🍉", "🍊", "🍌", "🍇", "🍓", "🫐", "🍈", "🍍", "🥭", "🍑", "🥝"];
     const DIAMOND    = "💎";
@@ -231,7 +254,8 @@ const slotHandler = async (ctx) => {
           ctx.chat.id,
           waitMsg.message_id,
           null,
-          getDesign(result1, result2, result3, result4, betAmount, winAmount, profit, status)
+          getDesign(result1, result2, result3, result4, betAmount, winAmount, profit, status),
+          { parse_mode: "HTML" }
         ).catch(err => logger.error("Edit result error: " + err.message));
       } catch (err) {
         logger.error("Timeout result error: " + err.message);

@@ -106,12 +106,18 @@ const main = async () => {
   let botReady = false;
 
   app.get("/", (req, res) => res.status(200).send("OK"));
+  // Liveness endpoint: return 200 as soon as the process is listening.
+  // Deployment platforms use this endpoint to decide whether to keep the container alive.
   app.get("/health", (req, res) => {
     const dbReady = mongoose.connection.readyState === 1;
-    if (!botReady || !dbReady) {
-      return res.status(503).json({ ok: false, botReady, dbReady });
-    }
-    return res.status(200).json({ ok: true, botReady: true, dbReady: true });
+    return res.status(200).json({ ok: true, botReady, dbReady });
+  });
+
+  // Readiness endpoint: useful for diagnostics without causing deployment restarts.
+  app.get("/ready", (req, res) => {
+    const dbReady = mongoose.connection.readyState === 1;
+    const ready = botReady && dbReady;
+    return res.status(ready ? 200 : 503).json({ ok: ready, botReady, dbReady });
   });
   
   const server = app.listen(PORT, "0.0.0.0", () => {

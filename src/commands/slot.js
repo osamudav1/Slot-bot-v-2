@@ -12,7 +12,7 @@ const lastSpinTime = new Map();
 // ─── WLJ CONFIG ──────────────────────────────────────────────────────────────
 // Defaults — owner can change at runtime via /wlj command
 const DEFAULT_WIN       = 36;   // base win %
-const DEFAULT_JACKPOT   = 2;    // 4-diamond jackpot %
+const DEFAULT_JACKPOT   = 0.1;  // 4-diamond jackpot %
 // Lose% is always derived: 100 - win - jackpot
 
 // Streak adjustment defaults
@@ -23,9 +23,14 @@ const DEFAULT_MIN_WIN   = 20;
 
 // Pool safety: below $5,000, reduce Win%; above it, recover gradually.
 // Values are stored in cents throughout the bot.
-const POOL_SAFETY_THRESHOLD = 500000;
+const POOL_SAFETY_THRESHOLD = 500000; // $5,000 reserve floor
+const POOL_RECOVERY_START = 500000; // recovery starts at $5,000
+const POOL_RECOVERY_BAND_END = 600000; // 5% recovery band ends at $6,000
 const POOL_RATE_RECOVERY_TARGET = 1000000; // full base rate is reached gradually by $10,000
-const POOL_SAFETY_MIN_WIN = 0; // $0 pool => 0% normal win + 2% jackpot = 98% loss
+const POOL_SAFETY_MIN_WIN = 0; // below reserve: normal win blocked, 0.1% jackpot configured, reserve guard protects payout
+const LOW_POOL_NORMAL_WIN = 0;
+const RECOVERY_STEP = 5;
+const MAX_RECOVERY_BOOSTS = 2;
 
 // Runtime globals (owner-adjustable)
 const getCfg = () => ({
@@ -45,6 +50,7 @@ const MULTI_JACKPOT  = 5;    // 4 💎 → 5x
 
 // Per-user history (in-memory, last 5 spins)
 const userHistory = new Map(); // userId → ['W','L','W',...]
+const recoveryState = new Map(); // userId → { attempts: number, exhausted: boolean }
 const HISTORY_SIZE = 5;
 
 // ─── WLJ RATE CALCULATOR ─────────────────────────────────────────────────────
@@ -52,30 +58,60 @@ const getWLJ = (userId, poolBalance = POOL_RATE_RECOVERY_TARGET) => {
   const hist = userHistory.get(userId) || [];
   const cfg  = getCfg();
 
-  const poolRatio = Math.max(0, Math.min(1, Number(poolBalance) / POOL_RATE_RECOVERY_TARGET));
-  const poolWinRate = POOL_SAFETY_MIN_WIN + ((cfg.win - POOL_SAFETY_MIN_WIN) * poolRatio);
-  let winRate = Math.min(cfg.maxWin, poolWinRate);
+  const balance = Number(poolBalance);
+  const state = recoveryState.get(userId) || { attempts: 0, exhausted: false };
 
-  const lowPool = Number(poolBalance) < POOL_SAFETY_THRESHOLD;
-  if (!lowPool && hist.length >= 3 && hist.slice(-3).every(r => r === "L")) {
-    // 3+ consecutive losses → boost win chance only after the reserve is safe.
+  if (balance < POOL_RECOVERY_START) {
+    recoveryState.delete(userId);
+    return { W: LOW_POOL_NORMAL_WIN, L: 99.9, J: cfg.jackpot };
+  }
+
+  const poolRatio = Math.max(0, Math.min(1, balance / POOL_RATE_RECOVERY_TARGET));
+  let winRate = Math.min(cfg.maxWin, POOL_SAFETY_MIN_WIN + ((cfg.win - POOL_SAFETY_MIN_WIN) * poolRatio));
+  const inRecoveryBand = balance < POOL_RECOVERY_BAND_END;
+  const hasLossStreak = hist.length >= 3 && hist.slice(-3).every(r => r === "L");
+
+  if (inRecoveryBand) {
+    // At $5,000–$6,000, allow only two +5-point recovery attempts after a loss streak.
+    if (state.exhausted || !hasLossStreak) {
+      winRate = Math.min(winRate, inRecoveryBand ? 5 : winRate);
+    } else {
+      winRate = Math.min(cfg.maxWin, 5 + ((state.attempts + 1) * RECOVERY_STEP));
+    }
+  } else if (hasLossStreak) {
     winRate = Math.min(winRate + cfg.boost, cfg.maxWin);
-  } else if (!lowPool && hist.length >= 2 && hist.slice(-2).every(r => r === "W")) {
-    // 2+ consecutive wins → reduce win chance only after the reserve is safe.
+  } else if (hist.length >= 2 && hist.slice(-2).every(r => r === "W")) {
     winRate = Math.max(winRate - cfg.reduce, cfg.minWin);
   }
 
   const loseRate = Math.max(0, 100 - cfg.jackpot - winRate);
-
   return { W: winRate, L: loseRate, J: cfg.jackpot };
 };
 
 // ─── RECORD RESULT ───────────────────────────────────────────────────────────
-const recordResult = (userId, result) => {
+const recordResult = (userId, result, poolBalance) => {
   const hist = userHistory.get(userId) || [];
   hist.push(result);
   if (hist.length > HISTORY_SIZE) hist.shift();
   userHistory.set(userId, hist);
+
+  if (Number(poolBalance) < POOL_RECOVERY_START || Number(poolBalance) >= POOL_RECOVERY_BAND_END) {
+    recoveryState.delete(userId);
+    return;
+  }
+
+  if (result === "W") {
+    recoveryState.delete(userId);
+    return;
+  }
+
+  const state = recoveryState.get(userId) || { attempts: 0, exhausted: false };
+  const hasLossStreak = hist.length >= 3 && hist.slice(-3).every(r => r === "L");
+  if (!state.exhausted && hasLossStreak) {
+    state.attempts += 1;
+    if (state.attempts >= MAX_RECOVERY_BOOSTS) state.exhausted = true;
+    recoveryState.set(userId, state);
+  }
 };
 
 // ─── SLOT HANDLER ────────────────────────────────────────────────────────────
@@ -173,6 +209,10 @@ const slotHandler = async (ctx) => {
 
     const slots      = ["🍒", "🍎", "🍐", "🍉", "🍊", "🍌", "🍇", "🍓", "🫐", "🍈", "🍍", "🥭", "🍑", "🥝"];
     const DIAMOND    = "💎";
+    const makeLoseSymbols = () => {
+      const shuffled = [...slots].sort(() => 0.5 - Math.random());
+      return shuffled.slice(0, 4);
+    };
 
     // ─── Determine outcome via WLJ ─────────────────────────────────────────
     const poolBalance = await getPoolBalance();
@@ -186,10 +226,6 @@ const slotHandler = async (ctx) => {
     let status        = "Lose";
     let outcome       = "L";
 
-    // Force loss if pool is too low (e.g., less than 5x the bet)
-    if (poolBalance < betAmount * 5 && ownerId !== userId.toString()) {
-      random = 99; // Force a loss roll
-    }
 
     if (random < wlj.J) {
       // ── JACKPOT: 4 diamonds → 5x ─────────────────────────────────────────
@@ -235,19 +271,28 @@ const slotHandler = async (ctx) => {
 
     } else {
       // ── LOSE ──────────────────────────────────────────────────────────────
-      // Guarantee all 4 are different (no accidental matches)
-      const shuffled = [...slots].sort(() => 0.5 - Math.random());
-      result1 = shuffled[0];
-      result2 = shuffled[1];
-      result3 = shuffled[2];
-      result4 = shuffled[3];
+      [result1, result2, result3, result4] = makeLoseSymbols();
       winMultiplier = 0;
       status  = "Lose ❌";
       outcome = "L";
     }
 
+    // Protect the reserve at settlement: a non-owner win may not lower the pool below $5,000.
+    const potentialWinAmount = betAmount * winMultiplier;
+    const potentialProfit = potentialWinAmount - betAmount;
+    const reserveBreach = ownerId !== userId.toString() && (
+      poolBalance < POOL_SAFETY_THRESHOLD ||
+      (potentialProfit > 0 && poolBalance - potentialProfit < POOL_SAFETY_THRESHOLD)
+    );
+    if (reserveBreach && outcome === "W") {
+      [result1, result2, result3, result4] = makeLoseSymbols();
+      winMultiplier = 0;
+      status = "Lose ❌";
+      outcome = "L";
+    }
+
     // ─── Record outcome for next spin's WLJ adjustment ─────────────────────
-    recordResult(userId, outcome);
+    recordResult(userId, outcome, poolBalance);
 
     // ─── Settle balance ────────────────────────────────────────────────────
     const winAmount = betAmount * winMultiplier;
@@ -346,6 +391,7 @@ const wljHandler = async (ctx) => {
   // ── SETTER ────────────────────────────────────────────────────────────────
   if (sub && !isNaN(val)) {
     const int = Math.round(val);
+    const numeric = Math.round(val * 10) / 10;
     let error = null;
 
     if (sub === "win") {
@@ -354,9 +400,9 @@ const wljHandler = async (ctx) => {
       else { global.slotWin = int; }
 
     } else if (sub === "jackpot") {
-      if (int < 1 || int > 10) error = "Jackpot% must be 1–10";
-      else if (cfg.win + int >= 100) error = `Win (${cfg.win}%) + Jackpot must be < 100`;
-      else { global.slotJackpot = int; }
+      if (numeric < 0.1 || numeric > 10) error = "Jackpot% must be 0.1–10";
+      else if (cfg.win + numeric >= 100) error = `Win (${cfg.win}%) + Jackpot must be < 100`;
+      else { global.slotJackpot = numeric; }
 
     } else if (sub === "boost") {
       if (int < 1 || int > 30) error = "Boost must be 1–30";

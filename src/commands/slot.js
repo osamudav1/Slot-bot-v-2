@@ -125,17 +125,22 @@ const slotHandler = async (ctx) => {
     const waitMsg = await ctx.reply("⚡️", { reply_to_message_id: ctx.message.message_id });
 
     const _usd = (cents) => `$${(cents / 100).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-    const escapeHtml = (value) => String(value)
-      .replace(/&/g, "&amp;")
-      .replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;");
     const getDesign = (s1, s2, s3, s4, bet = 0, win = 0, profit = 0, status = "") => {
       const resultStatus = profit > 0 ? "Win ✅" : "Lose ❌";
-      return `<pre>🎰 GUESS SLOT V2.0
+      return `🎰 GUESS SLOT V2.0
+✦ ━━━━━━━━━━━ ✦
 
-💵 Bet    : ${_usd(bet)}
-💰 Win    : ${_usd(win)}
-📊 Profit : ${_usd(profit)} [${escapeHtml(resultStatus)}]</pre>`;
+┏━━━━━━━━━━━━━┓
+┃ ${s1} | ${s2} | ${s3} | ${s4} ┃
+┗━━━━━━━━━━━━━┛
+
+✦ ━━━━━━━━━━━ ✦
+🎰 SLOT DETAILS
+✦ ━━━━━━━━━━━ ✦
+💵 Bet     : ${_usd(bet)}
+💰 Win     : ${_usd(win)}
+📊 Profit  : ${_usd(profit)} [${resultStatus}]
+✦ ━━━━━━━━━━━ ✦`;
     };
 
     const slots      = ["🍒", "🍎", "🍐", "🍉", "🍊", "🍌", "🍇", "🍓", "🫐", "🍈", "🍍", "🥭", "🍑", "🥝"];
@@ -241,8 +246,7 @@ const slotHandler = async (ctx) => {
           ctx.chat.id,
           waitMsg.message_id,
           null,
-          getDesign(result1, result2, result3, result4, betAmount, winAmount, profit, status),
-          { parse_mode: "HTML" }
+          getDesign(result1, result2, result3, result4, betAmount, winAmount, profit, status)
         ).catch(err => logger.error("Edit result error: " + err.message));
       } catch (err) {
         logger.error("Timeout result error: " + err.message);

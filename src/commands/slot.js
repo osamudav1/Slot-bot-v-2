@@ -80,6 +80,11 @@ const recordResult = (userId, result) => {
 // ─── SLOT HANDLER ────────────────────────────────────────────────────────────
 const slotHandler = async (ctx) => {
   const userId = ctx.from.id;
+  let betAmount = 0;
+  let waitMsg = null;
+  let debited = false;
+  let creditedWin = false;
+  let settled = false;
   try {
     const text = ctx.message.text || "";
 
@@ -97,7 +102,7 @@ const slotHandler = async (ctx) => {
     }
 
     const args = text.split(" ");
-    const betAmount = args[1] ? Math.floor(parseFloat(args[1]) * 100) : 100;
+    betAmount = args[1] ? Math.floor(parseFloat(args[1]) * 100) : 100;
 
     if (isNaN(betAmount) || betAmount <= 0) {
       return ctx.reply("Usage: /slot <amount_in_dollars>\nExample: /slot 1.5");
@@ -109,6 +114,12 @@ const slotHandler = async (ctx) => {
       return ctx.reply("🔴 အများဆုံး 500 $ ထိသာ လောင်းနိုင်ပါသည်။");
     }
 
+    // Reserve this user before any async work so duplicate spins cannot overlap.
+    activeSpins.add(userId);
+
+    // Acknowledge immediately; database work happens after the fast Telegram reply.
+    waitMsg = await ctx.reply("⚡️", { reply_to_message_id: ctx.message.message_id });
+
     const user = await User.findOneAndUpdate(
       { id: Number(userId), coins: { $gte: betAmount } },
       { $inc: { coins: -betAmount } },
@@ -116,13 +127,18 @@ const slotHandler = async (ctx) => {
     );
 
     if (!user) {
-      return ctx.reply(getString("NO_BALANCE"));
+      await ctx.telegram.editMessageText(
+        ctx.chat.id,
+        waitMsg.message_id,
+        null,
+        getString("NO_BALANCE")
+      ).catch(err => logger.error("Balance message error: " + err.message));
+      activeSpins.delete(userId);
+      return;
     }
 
-    activeSpins.add(userId);
+    debited = true;
     lastSpinTime.set(userId, Date.now());
-
-    const waitMsg = await ctx.reply("⚡️", { reply_to_message_id: ctx.message.message_id });
 
     const _usd = (cents) => `$${(cents / 100).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
     const getDesign = (s1, s2, s3, s4, bet = 0, win = 0, profit = 0, status = "") => {
@@ -224,10 +240,12 @@ const slotHandler = async (ctx) => {
     const profit    = winAmount - betAmount;
 
     if (winAmount > 0) {
-      await User.findOneAndUpdate(
+      const creditedUser = await User.findOneAndUpdate(
         { id: Number(userId) },
         { $inc: { coins: winAmount } }
       );
+      if (!creditedUser) throw new Error("User win credit failed");
+      creditedWin = true;
       // Subtract profit from pool (since user won)
       if (profit > 0) {
         await subtractFromPool(profit);
@@ -239,6 +257,7 @@ const slotHandler = async (ctx) => {
         logger.error("Bank update error: " + err.message)
       );
     }
+    settled = true;
 
     // Show the final result immediately after settlement; no artificial delay.
     try {
@@ -254,7 +273,24 @@ const slotHandler = async (ctx) => {
 
   } catch (err) {
     logger.error("Slot handler error: " + err.stack);
+
+    // Refund only when the bet was deducted but no user win was credited.
+    if (debited && !creditedWin && !settled) {
+      await User.findOneAndUpdate(
+        { id: Number(userId) },
+        { $inc: { coins: betAmount } }
+      ).catch(refundErr => logger.error("Slot refund error: " + refundErr.message));
+    }
+
     activeSpins.delete(userId);
+    if (waitMsg) {
+      return ctx.telegram.editMessageText(
+        ctx.chat.id,
+        waitMsg.message_id,
+        null,
+        getString("DATABASE_LOCK")
+      ).catch(() => {});
+    }
     return ctx.reply(getString("DATABASE_LOCK")).catch(() => {});
   }
 };

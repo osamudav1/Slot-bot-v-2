@@ -113,14 +113,14 @@ const settleGame = async (ctx, gameKey, isTimeout = false) => {
       await User.findOneAndUpdate({ id: Number(game.userId) }, { $inc: { coins: payout } });
       await subtractFromPool(profit);
       await decreaseBankAmount({ ctx, decreaseAmont: profit }).catch((error) => logger.error(`Bank decrease error: ${error.message}`));
-      resultText = `👤 Player အနိုင်\n+${money(profit)} အမြတ် (စုစုပေါင်း ${money(payout)} ပြန်ရ)\nအမျိုးအစား: ${winnerInfo.categoryName}`;
+      resultText = `👤 Player Win\nWin - ${money(profit)}`;
     } else if (result === "BANKER") {
       await addToPool(game.betAmount);
       await increaseBankAmount({ ctx, increaseAmount: game.betAmount }).catch((error) => logger.error(`Bank increase error: ${error.message}`));
-      resultText = `🏦 Banker အနိုင်\n-${money(game.betAmount)}\nအမျိုးအစား: ${winnerInfo.categoryName}`;
+      resultText = `🏦 Banker Win\nLose - ${money(game.betAmount)}`;
     } else {
       await User.findOneAndUpdate({ id: Number(game.userId) }, { $inc: { coins: game.betAmount } });
-      resultText = `⚖️ Tie ဖြစ်ပါသည်\n${money(game.betAmount)} ပြန်အမ်းပါသည်`;
+      resultText = `⚖️ Tie\nReturn - ${money(game.betAmount)}`;
     }
 
     const timeoutText = isTimeout ? "\n⏱️ အချိန်ကုန်သဖြင့် အလိုအလျောက်ဆုံးဖြတ်ထားသည်။" : "";

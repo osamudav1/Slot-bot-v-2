@@ -249,8 +249,12 @@ composer.action(/^shan_draw_(\d+)$/, async (ctx) => {
   if (game.playerHand.length >= 3) return ctx.answerCbQuery("ကတ် ၃ ကတ်ထက် ပိုဆွဲ၍မရပါ!");
 
   game.playerHand.push(game.deck.pop());
-  await settleGame(ctx, gameKey);
-  return ctx.answerCbQuery();
+  // Acknowledge Telegram immediately; settlement may require several database writes.
+  await ctx.answerCbQuery();
+  settleGame(ctx, gameKey).catch((error) =>
+    logger.error(`Async Shan draw settlement error: ${error.message}`)
+  );
+  return;
 });
 
 composer.action(/^shan_stand_(\d+)$/, async (ctx) => {
@@ -261,8 +265,12 @@ composer.action(/^shan_stand_(\d+)$/, async (ctx) => {
   const game = activeGames.get(gameKey);
   if (!game || game.status !== "playing") return ctx.answerCbQuery("ဂိမ်းသက်တမ်းကုန်သွားပါပြီ။");
 
-  await settleGame(ctx, gameKey);
-  return ctx.answerCbQuery();
+  // Acknowledge Telegram immediately; settlement may require several database writes.
+  await ctx.answerCbQuery();
+  settleGame(ctx, gameKey).catch((error) =>
+    logger.error(`Async Shan stand settlement error: ${error.message}`)
+  );
+  return;
 });
 
 module.exports = composer;

@@ -42,84 +42,39 @@ const loadScenes = async (bot) => {
 const setBotCommands = async (bot) => {
   const ownerId = process.env.OWNER_ID;
 
-  const userCommands = [
+  // Keep Telegram's visible menu intentionally minimal. Other commands
+  // remain functional when typed, but only /start is shown in the menu.
+  const visibleCommands = [
     { command: "start", description: "Bot စတင်ရန်" },
-    { command: "help", description: "စည်းမျဉ်းနှင့် အကူအညီကြည့်ရန်" },
-    { command: getCommandName("bank") || "wallet", description: "Wallet နှစ်ခုလုံးကြည့်ရန်" },
-    { command: "bal", description: "Wallet နှစ်ခုလုံးကြည့်ရန်" },
-    { command: "exchange", description: "Waifu နှင့် Slot Wallet ငွေလွှဲရန်" },
-    { command: getCommandName("salary") || "salary", description: "လစာရယူရန်" },
-    { command: getCommandName("slot") || "slot", description: "Slot ကစားရန်" },
-    { command: getCommandName("shan") || "shan", description: "Shan Ko Mee ကစားရန်" },
-
-    { command: "daily", description: "နေ့စဉ်ဆုကြေးရယူရန်" },
-    { command: "mgift", description: "ငွေလွှဲရန် (User ကို Reply)" },
-    { command: getCommandName("ranking") || "ranking", description: "ထိပ်တန်းကစားသူများကြည့်ရန်" },
-
-    { command: getCommandName("case") || "case", description: "Case ဖွင့်ရန်" },
-    { command: "gbuy", description: "Card လဲလှယ်ရန်" },
-    { command: "buys", description: "USD ဖြင့် GRAM ဝယ်ရန်" },
   ];
-
-  const ownerCommands = [
-    ...userCommands,
-    { command: getCommandName("add") || "add", description: "Balance ထည့်/နုတ်ရန် (Owner)" },
-    { command: "register", description: "Group ဖွင့်ရန် (Owner)" },
-    { command: "broadcast", description: "User အားလုံးထံ စာပို့ရန်" },
-    { command: "logs", description: "User စာရင်းကြည့်ရန်" },
-    { command: "glogs", description: "Group စာရင်းကြည့်ရန်" },
-    { command: "guess", description: "Guess Bot ဖွင့်/ပိတ်ရန်" },
-    { command: "catch", description: "Catch Bot ဖွင့်/ပိတ်ရန်" },
-    { command: "grab", description: "Grab Bot ဖွင့်/ပိတ်ရန်" },
-    { command: "addpool", description: "Payout Pool ငွေထည့်ရန်" },
-    { command: "ownerhelp", description: "Owner ထိန်းချုပ်မှုများ" },
-    { command: "pool", description: "Payout Pool ကြည့်ရန်" },
-    { command: "setwin", description: "အနိုင်ရနှုန်းသတ်မှတ်ရန်" },
-    { command: "setlimit", description: "Bet Limit သတ်မှတ်ရန်" },
-    { command: "setcooldown", description: "Cooldown သတ်မှတ်ရန်" },
-    { command: "pausegame", description: "Game ခဏရပ်/ပြန်ဖွင့်ရန်" },
-    { command: "user", description: "User Balance ကြည့်ရန်" },
-    { command: "adjust", description: "User Balance ပြင်ရန်" },
-    { command: "stats", description: "Bot အချက်အလက်ကြည့်ရန်" },
-    { command: "resetcontrol", description: "ထိန်းချုပ်မှု Reset လုပ်ရန်" },
-    { command: "gramwallet", description: "GRAM Wallet သတ်မှတ်ရန်" },
-    { command: "maintenance", description: "Maintenance ဖွင့်/ပိတ်ရန်" },
-    { command: "gramdeposits", description: "GRAM ငွေဖြည့်မှတ်တမ်းကြည့်ရန်" },
-  ];
-
-  // Clear the old default scope first; otherwise Telegram may keep showing
-  // commands that were registered before owner/user scopes were separated.
-  await bot.telegram.deleteMyCommands().catch((err) =>
-    logger.error(`Failed to clear default command scope: ${err.message}`)
-  );
-
-  // Explicit scopes prevent old/default owner menus from leaking to users.
   const userScopes = [
     { type: "all_private_chats" },
     { type: "all_group_chats" },
   ];
+
+  // Clear the old default and user scopes, then explicitly set /start.
+  await bot.telegram.deleteMyCommands().catch((err) =>
+    logger.error(`Failed to clear default command scope: ${err.message}`)
+  );
+  await bot.telegram.setMyCommands(visibleCommands);
   for (const scope of userScopes) {
     await bot.telegram.deleteMyCommands({ scope }).catch((err) =>
       logger.error(`Failed to clear command scope ${scope.type}: ${err.message}`)
     );
-    await bot.telegram.setMyCommands(userCommands, { scope });
+    await bot.telegram.setMyCommands(visibleCommands, { scope });
   }
 
-  // Owner gets the extended menu only in the owner's private chat.
+  // Clear any previously registered owner-only menu. Owner also sees /start only.
   const ownerChatId = Number(ownerId);
   if (Number.isSafeInteger(ownerChatId)) {
-    try {
-      await bot.telegram.setMyCommands(ownerCommands, {
-        scope: { type: "chat", chat_id: ownerChatId },
-      });
-    } catch (err) {
-      logger.error(`Failed to set owner commands: ${err.message}`);
-    }
-  } else if (ownerId) {
-    logger.warn("OWNER_ID must be a numeric Telegram user ID; owner menu was not configured.");
+    const ownerScope = { type: "chat", chat_id: ownerChatId };
+    await bot.telegram.deleteMyCommands({ scope: ownerScope }).catch((err) =>
+      logger.error(`Failed to clear owner command scope: ${err.message}`)
+    );
+    await bot.telegram.setMyCommands(visibleCommands, { scope: ownerScope });
   }
 
-  logger.success("Bot commands menu updated with owner separation");
+  logger.success("Bot command menu limited to /start");
 };
 
 const main = async () => {

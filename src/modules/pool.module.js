@@ -17,7 +17,7 @@ const numericValue = {
 };
 
 const getPoolBalance = async () => {
-  const config = await Config.findOne({ key: POOL_KEY });
+  const config = await Config.findOne({ key: POOL_KEY }).lean();
   const balance = toCents(config?.value);
 
   // Repair legacy negative/corrupt values so every caller sees a safe balance.

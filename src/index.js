@@ -14,6 +14,14 @@ const { isOwner } = require("./modules/owner.module");
 const User = require("./database/entity/user.entitiy");
 const { hydrateFromMongo } = require("./modules/slot-wallet.module");
 
+const withTimeout = (promise, timeoutMs, label) => Promise.race([
+  promise,
+  new Promise((_, reject) => {
+    const timer = setTimeout(() => reject(new Error(`${label} timed out after ${timeoutMs}ms`)), timeoutMs);
+    timer.unref?.();
+  }),
+]);
+
 const loadCommands = async (bot) => {
   logger.info(`Commands loading...`);
   const commandsList = fs.readdirSync(__dirname + "/commands");
@@ -121,6 +129,13 @@ const setBotCommands = async (bot) => {
 
 const main = async () => {
   dotenv.config();
+
+  process.on("unhandledRejection", (error) => {
+    logger.error(`Unhandled promise rejection: ${error?.stack || error}`);
+  });
+  process.on("uncaughtException", (error) => {
+    logger.error(`Uncaught exception: ${error?.stack || error}`);
+  });
   
   // Groups must be explicitly registered by the owner before commands are usable.
   global.autoRegister = false;
@@ -218,7 +233,18 @@ const main = async () => {
       if (ctx.chat?.type === "private") {
         return next();
       } else if (ctx.chat?.type === "group" || ctx.chat?.type === "supergroup") {
-        const group = await getGroup(ctx.chat.id.toString());
+        let group;
+        try {
+          group = await withTimeout(
+            getGroup(ctx.chat.id.toString()),
+            2000,
+            "Group registration lookup"
+          );
+        } catch (groupLookupError) {
+          logger.error(`Group registration lookup failed: ${groupLookupError.message}`);
+          await ctx.reply("⚠️ Database ခဏမရသေးပါ။ ခဏနောက် ပြန်စမ်းပါ။").catch(() => {});
+          return;
+        }
         const text = ctx.message?.text || "";
         const isRegisterCommand = text.startsWith("/register");
         

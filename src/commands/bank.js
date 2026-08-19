@@ -1,6 +1,7 @@
 const { Composer } = require("telegraf");
 const { getUser } = require("../modules/user.module");
 const { getCommandName } = require("../lang/index");
+const { getBalance } = require("../modules/slot-wallet.module");
 
 const getBadge = (coins) => {
   if (coins <= 25000) return "🐣 Beginner";
@@ -18,7 +19,8 @@ const getBadge = (coins) => {
 const walletHandler = async (ctx) => {
   const user = await getUser({ id: ctx.from.id, firstName: ctx.from.first_name });
   const coins = user?.coins || 0;
-  const slotWallet = user?.slot_wallet || 0;
+  // Slot/Shan gameplay uses the persistent local wallet; MongoDB remains the Waifu wallet.
+  const slotWallet = getBalance(ctx.from.id);
   const badge = getBadge(coins);
   const firstName = ctx.from.first_name;
   const formatBalance = (amount) => (amount / 100).toLocaleString(undefined, {

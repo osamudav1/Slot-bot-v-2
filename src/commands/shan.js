@@ -3,14 +3,13 @@ const { increaseBankAmount, decreaseBankAmount } = require("../modules/bank.modu
 const { getString, getCommandName } = require("../lang/index");
 const { debit, credit } = require("../modules/slot-wallet.module");
 const logger = require("../logger");
-const { getPoolBalance, addToPool, subtractFromPool } = require("../modules/pool.module");
+const { addToPool, subtractFromPool } = require("../modules/pool.module");
 const { getOwnerSettings } = require("../modules/owner-settings.module");
 const { isOwner } = require("../modules/owner.module");
 
 const activeGames = new Map();
 const lastShanTime = new Map();
 const GAME_TIMEOUT = 60000;
-const SHAN_POOL_RESERVE = 500000; // $5,000.00; non-owner payouts may not breach this reserve.
 
 const SUITS = ["♠️", "♥️", "♣️", "♦️"];
 const SUIT_STRENGTH = { "♣️": 1, "♥️": 2, "♦️": 3, "♠️": 4 };
@@ -76,19 +75,9 @@ const settleGame = async (ctx, gameKey, isTimeout = false) => {
     const playerInfo = getHandInfo(game.playerHand);
     const bankerInfo = getHandInfo(game.bankerHand);
     const comparison = compareHands(playerInfo, bankerInfo);
-    let result = comparison > 0 ? "PLAYER" : comparison < 0 ? "BANKER" : "TIE";
-    let reserveProtected = false;
-
-    // Card rules remain unchanged, but the payout pool is protected transparently.
-    // A non-owner player win is withheld when paying the 2x payout would breach $5,000.
-    if (result === "PLAYER" && !isOwner(ctx)) {
-      const poolBalance = await getPoolBalance();
-      const requiredProfit = game.betAmount;
-      if (poolBalance < SHAN_POOL_RESERVE || poolBalance - requiredProfit < SHAN_POOL_RESERVE) {
-        result = "BANKER";
-        reserveProtected = true;
-      }
-    }
+    // The card result is authoritative: the higher final point wins.
+    // Pool balance must never rewrite Player Win into Banker Win.
+    const result = comparison > 0 ? "PLAYER" : comparison < 0 ? "BANKER" : "TIE";
 
     let resultText;
     if (result === "PLAYER") {
@@ -101,7 +90,7 @@ const settleGame = async (ctx, gameKey, isTimeout = false) => {
     } else if (result === "BANKER") {
       await addToPool(game.betAmount);
       await increaseBankAmount({ ctx, increaseAmount: game.betAmount }).catch((error) => logger.error(`Bank increase error: ${error.message}`));
-      resultText = `🏦 Banker Win\nLose - ${money(game.betAmount)}${reserveProtected ? "\n🛡️ Pool reserve protection active" : ""}`;
+      resultText = `🏦 Banker Win\nLose - ${money(game.betAmount)}`;
     } else {
       await credit(game.userId, game.betAmount);
       resultText = `⚖️ Tie\nReturn - ${money(game.betAmount)}`;

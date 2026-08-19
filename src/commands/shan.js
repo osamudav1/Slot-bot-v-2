@@ -3,13 +3,20 @@ const { increaseBankAmount, decreaseBankAmount } = require("../modules/bank.modu
 const { getString, getCommandName } = require("../lang/index");
 const { debit, credit } = require("../modules/slot-wallet.module");
 const logger = require("../logger");
-const { addToPool, subtractFromPool } = require("../modules/pool.module");
+const { getPoolBalance, addToPool, subtractFromPool } = require("../modules/pool.module");
 const { getOwnerSettings } = require("../modules/owner-settings.module");
 const { isOwner } = require("../modules/owner.module");
 
 const activeGames = new Map();
 const lastShanTime = new Map();
+const shanLossStreak = new Map();
 const GAME_TIMEOUT = 60000;
+const LOW_POOL_THRESHOLD = 200000;
+const LOW_POOL_WIN = 5;
+const LOW_POOL_TIE = 40;
+const LOW_POOL_LOSE = 55;
+const LOSS_BOOST_AFTER = 4;
+const LOSS_BOOST = 5;
 
 const SUITS = ["♠️", "♥️", "♣️", "♦️"];
 const SUIT_STRENGTH = { "♣️": 1, "♥️": 2, "♦️": 3, "♠️": 4 };
@@ -55,6 +62,39 @@ const compareHands = (left, right) => {
 const formatHand = (cards) => cards.map((card) => `${card.value}${card.suit}`).join(" ");
 const money = (cents) => `$${(cents / 100).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
+const getLowPoolTarget = (userId, poolBalance) => {
+  if (Number(poolBalance) >= LOW_POOL_THRESHOLD) return null;
+  const streak = shanLossStreak.get(String(userId)) || 0;
+  const winRate = LOW_POOL_WIN + (streak >= LOSS_BOOST_AFTER ? LOSS_BOOST : 0);
+  const roll = Math.random() * 100;
+  if (roll < winRate) return "PLAYER";
+  if (roll < winRate + LOW_POOL_TIE) return "TIE";
+  return "BANKER";
+};
+
+const recordShanResult = (userId, result) => {
+  const key = String(userId);
+  const streak = shanLossStreak.get(key) || 0;
+  if (result === "PLAYER") {
+    shanLossStreak.delete(key);
+  } else if (result === "BANKER") {
+    shanLossStreak.set(key, streak + 1);
+  }
+};
+
+const findHandForTarget = (playerHand, deck, target) => {
+  if (!target) return null;
+  for (let attempt = 0; attempt < 3000; attempt += 1) {
+    const candidates = [...deck].sort(() => Math.random() - 0.5);
+    const bankerHand = [candidates[0], candidates[1]];
+    if (shouldBankerDraw(bankerHand)) bankerHand.push(candidates[2]);
+    const comparison = compareHands(getHandInfo(playerHand), getHandInfo(bankerHand));
+    const result = comparison > 0 ? "PLAYER" : comparison < 0 ? "BANKER" : "TIE";
+    if (result === target) return bankerHand;
+  }
+  return null;
+};
+
 const shouldBankerDraw = (hand) => {
   const info = getHandInfo(hand);
   // Banker draws exactly one card when its point is 0–4; it stands on 5–9.
@@ -72,12 +112,18 @@ const settleGame = async (ctx, gameKey, isTimeout = false) => {
   try {
     if (shouldBankerDraw(game.bankerHand)) game.bankerHand.push(game.deck.pop());
 
+    if (game.targetResult) {
+      const controlledHand = findHandForTarget(game.playerHand, game.deck, game.targetResult);
+      if (controlledHand) game.bankerHand = controlledHand;
+    }
+
     const playerInfo = getHandInfo(game.playerHand);
     const bankerInfo = getHandInfo(game.bankerHand);
     const comparison = compareHands(playerInfo, bankerInfo);
     // The card result is authoritative: the higher final point wins.
     // Pool balance must never rewrite Player Win into Banker Win.
     const result = comparison > 0 ? "PLAYER" : comparison < 0 ? "BANKER" : "TIE";
+    recordShanResult(game.userId, result);
 
     let resultText;
     if (result === "PLAYER") {
@@ -155,6 +201,8 @@ const shanHandler = async (ctx) => {
     const deck = createDeck();
     const playerHand = [deck.pop(), deck.pop()];
     const bankerHand = [deck.pop(), deck.pop()];
+    const poolBalance = await getPoolBalance();
+    const targetResult = getLowPoolTarget(userId, poolBalance);
     const playerInfo = getHandInfo(playerHand);
 
     const gameMsg = `🃏 *SHAN KO MEE* 🃏\n` +
@@ -183,6 +231,7 @@ const shanHandler = async (ctx) => {
       playerHand,
       bankerHand,
       deck,
+      targetResult,
       status: "playing"
     });
     lastShanTime.set(userId, Date.now());

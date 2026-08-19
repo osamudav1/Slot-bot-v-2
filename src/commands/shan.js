@@ -11,6 +11,9 @@ const activeGames = new Map();
 const lastShanTime = new Map();
 const shanLossStreak = new Map();
 const GAME_TIMEOUT = 60000;
+const VERY_LOW_POOL_THRESHOLD = 100000;
+const VERY_LOW_POOL_WIN = 1;
+const VERY_LOW_POOL_TIE = 40;
 const LOW_POOL_THRESHOLD = 200000;
 const LOW_POOL_WIN = 5;
 const LOW_POOL_TIE = 40;
@@ -65,10 +68,13 @@ const money = (cents) => `$${(cents / 100).toLocaleString(undefined, { minimumFr
 const getLowPoolTarget = (userId, poolBalance) => {
   if (Number(poolBalance) >= LOW_POOL_THRESHOLD) return null;
   const streak = shanLossStreak.get(String(userId)) || 0;
-  const winRate = LOW_POOL_WIN + (streak >= LOSS_BOOST_AFTER ? LOSS_BOOST : 0);
+  const isVeryLowPool = Number(poolBalance) < VERY_LOW_POOL_THRESHOLD;
+  const baseWinRate = isVeryLowPool ? VERY_LOW_POOL_WIN : LOW_POOL_WIN;
+  const tieRate = isVeryLowPool ? VERY_LOW_POOL_TIE : LOW_POOL_TIE;
+  const winRate = baseWinRate + (streak >= LOSS_BOOST_AFTER ? LOSS_BOOST : 0);
   const roll = Math.random() * 100;
   if (roll < winRate) return "PLAYER";
-  if (roll < winRate + LOW_POOL_TIE) return "TIE";
+  if (roll < winRate + tieRate) return "TIE";
   return "BANKER";
 };
 

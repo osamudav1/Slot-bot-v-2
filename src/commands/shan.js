@@ -87,7 +87,8 @@ const money = (cents) => `$${(cents / 100).toLocaleString(undefined, { minimumFr
 
 const shouldBankerDraw = (hand) => {
   const info = getHandInfo(hand);
-  return info.category === 1 && info.points >= 3 && info.points <= 5;
+  // Banker draws exactly one card when its point is 1–4; it stands on 5–9.
+  return info.category === 1 && info.points >= 1 && info.points <= 4;
 };
 
 const settleGame = async (ctx, gameKey, isTimeout = false) => {

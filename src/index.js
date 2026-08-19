@@ -101,12 +101,14 @@ const setBotCommands = async (bot) => {
 
   // Only the owner’s private chat receives the full owner command menu.
   const ownerChatId = Number(ownerId);
-  if (Number.isSafeInteger(ownerChatId)) {
+  if (Number.isSafeInteger(ownerChatId) && ownerChatId > 0) {
     const ownerScope = { type: "chat", chat_id: ownerChatId };
     await bot.telegram.deleteMyCommands({ scope: ownerScope }).catch((err) =>
       logger.error(`Failed to clear owner command scope: ${err.message}`)
     );
-    await bot.telegram.setMyCommands(ownerCommands, { scope: ownerScope });
+    await bot.telegram.setMyCommands(ownerCommands, { scope: ownerScope }).catch((err) =>
+      logger.error(`Failed to set owner command scope: ${err.message}`)
+    );
   }
 
   logger.success("User and owner command menus configured");
@@ -166,6 +168,9 @@ const main = async () => {
       
       const ownerId = process.env.OWNER_ID;
       const currentUserId = ctx.from.id.toString();
+      const commandText = String(ctx.message?.text || ctx.callbackQuery?.message?.text || "");
+      const commandName = commandText.trim().split(/\s+/)[0].split("@")[0].toLowerCase();
+      const alwaysAllowedCommands = new Set(["/start", "/help", "/wallet", "/exchange"]);
 
       // Owner can always access the bot so maintenance can be switched off.
       // Do not let a stalled MongoDB query block Telegram updates indefinitely.
@@ -180,7 +185,7 @@ const main = async () => {
           logger.error(`Maintenance lookup error: ${maintenanceError.message}`);
         }
       }
-      if (maintenanceEnabled) {
+      if (maintenanceEnabled && !alwaysAllowedCommands.has(commandName)) {
         if (ctx.chat?.type === "private") {
           await ctx.reply("🛠 Maintenance ပြုလုပ်နေသည်။ ခဏနောက် ထပ်ကြိုးစားပါ။");
         }

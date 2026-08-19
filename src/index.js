@@ -307,9 +307,9 @@ const main = async () => {
         throw new Error("BOT_MODE=webhook requires WEBHOOK_URL or RENDER_EXTERNAL_URL");
       }
       const webhookPath = "/telegram/webhook";
-      // Express strips the mounted route from req.url. Telegraf must therefore
-      // match the route-local path `/`, not the public `/telegram/webhook` path.
-      app.post(webhookPath, bot.webhookCallback("/"));
+      // Mount the callback with app.use so Express strips the public prefix.
+      // Telegraf then receives the route-local path `/` and accepts the update.
+      app.use(webhookPath, bot.webhookCallback("/"));
       await bot.telegram.setWebhook(`${publicUrl}${webhookPath}`, {
         drop_pending_updates: true,
       });

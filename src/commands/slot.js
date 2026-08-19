@@ -5,6 +5,7 @@ const { getBalance, debit, credit } = require("../modules/slot-wallet.module");
 const logger = require("../logger");
 const { getPoolBalance, addToPool, subtractFromPool } = require("../modules/pool.module");
 const { getOwnerSettings } = require("../modules/owner-settings.module");
+const { isOwner } = require("../modules/owner.module");
 
 const activeSpins = new Set();
 const lastSpinTime = new Map();
@@ -137,12 +138,12 @@ const slotHandler = async (ctx) => {
       logger.error(`Slot settings error: ${settingsError.message}`);
       ownerSettings = { winRate: DEFAULT_WIN, minBet: 2000, maxBet: 50000, cooldown: 8000, pauseSlot: false };
     }
-    if (ownerSettings.pauseSlot && ownerId !== userId.toString()) {
+    if (ownerSettings.pauseSlot && !isOwner(ctx)) {
       return ctx.reply("🛠 Slot game is temporarily paused by owner.").catch(() => {});
     }
 
     const now = Date.now();
-    if (ownerId !== userId.toString() && lastSpinTime.has(userId)) {
+    if (!isOwner(ctx) && lastSpinTime.has(userId)) {
       const timeLeft = Math.ceil((lastSpinTime.get(userId) + ownerSettings.cooldown - now) / 1000);
       if (timeLeft > 0) {
         return ctx.reply(`⏳ Please wait ${timeLeft} seconds before spinning again!`).catch(() => {});
@@ -276,7 +277,7 @@ const slotHandler = async (ctx) => {
     // Protect the reserve at settlement: a non-owner win may not lower the pool below $5,000.
     const potentialWinAmount = betAmount * winMultiplier;
     const potentialProfit = potentialWinAmount - betAmount;
-    const reserveBreach = ownerId !== userId.toString() && (
+    const reserveBreach = !isOwner(ctx) && (
       poolBalance < POOL_SAFETY_THRESHOLD ||
       (potentialProfit > 0 && poolBalance - potentialProfit < POOL_SAFETY_THRESHOLD)
     );
@@ -362,8 +363,7 @@ const slotHandler = async (ctx) => {
 //    /wlj reset
 //
 const wljHandler = async (ctx) => {
-  const ownerId = process.env.OWNER_ID;
-  if (!ownerId || ctx.from.id.toString() !== ownerId) return;
+  if (!isOwner(ctx)) return;
 
   const args   = (ctx.message.text || "").trim().split(/\s+/);
   const sub    = args[1]?.toLowerCase();

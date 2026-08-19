@@ -5,6 +5,7 @@ const { debit, credit } = require("../modules/slot-wallet.module");
 const logger = require("../logger");
 const { addToPool, subtractFromPool } = require("../modules/pool.module");
 const { getOwnerSettings } = require("../modules/owner-settings.module");
+const { isOwner } = require("../modules/owner.module");
 
 const activeGames = new Map();
 const lastShanTime = new Map();
@@ -159,12 +160,12 @@ const shanHandler = async (ctx) => {
       logger.error(`Shan settings error: ${settingsError.message}`);
       ownerSettings = { minBet: 2000, maxBet: 50000, cooldown: 8000, pauseShan: false };
     }
-    if (ownerSettings.pauseShan && ownerId !== userId.toString()) {
+    if (ownerSettings.pauseShan && !isOwner(ctx)) {
       return ctx.reply("🛠 Shan game is temporarily paused by owner.").catch(() => {});
     }
 
     const now = Date.now();
-    if (ownerId !== userId.toString() && lastShanTime.has(userId)) {
+    if (!isOwner(ctx) && lastShanTime.has(userId)) {
       const timeLeft = Math.ceil((lastShanTime.get(userId) + ownerSettings.cooldown - now) / 1000);
       if (timeLeft > 0) return ctx.reply(`⏳ Please wait ${timeLeft} seconds before playing again!`).catch(() => {});
     }

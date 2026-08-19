@@ -9,6 +9,7 @@ const handleCaseEvent = require("./handlers/handle.case");
 const { getGroup, createGroupRequest, getTotalGroups, registerGroup } = require("./modules/group.module");
 const { getUser } = require("./modules/user.module");
 const { isMaintenanceEnabled } = require("./modules/maintenance.module");
+const { isOwner } = require("./modules/owner.module");
 
 const User = require("./database/entity/user.entitiy");
 const { hydrateFromMongo } = require("./modules/slot-wallet.module");
@@ -91,12 +92,16 @@ const setBotCommands = async (bot) => {
   await bot.telegram.deleteMyCommands().catch((err) =>
     logger.error(`Failed to clear default command scope: ${err.message}`)
   );
-  await bot.telegram.setMyCommands(userCommands);
+  await bot.telegram.setMyCommands(userCommands).catch((err) =>
+    logger.error(`Failed to set default command menu: ${err.message}`)
+  );
   for (const scope of userScopes) {
     await bot.telegram.deleteMyCommands({ scope }).catch((err) =>
       logger.error(`Failed to clear command scope ${scope.type}: ${err.message}`)
     );
-    await bot.telegram.setMyCommands(userCommands, { scope });
+    await bot.telegram.setMyCommands(userCommands, { scope }).catch((err) =>
+      logger.error(`Failed to set command scope ${scope.type}: ${err.message}`)
+    );
   }
 
   // Only the owner’s private chat receives the full owner command menu.
@@ -168,6 +173,7 @@ const main = async () => {
       
       const ownerId = process.env.OWNER_ID;
       const currentUserId = ctx.from.id.toString();
+      const currentUserIsOwner = isOwner(ctx);
       const commandText = String(ctx.message?.text || ctx.callbackQuery?.message?.text || "");
       const commandName = commandText.trim().split(/\s+/)[0].split("@")[0].toLowerCase();
       const alwaysAllowedCommands = new Set(["/start", "/help", "/wallet", "/exchange"]);
@@ -175,7 +181,7 @@ const main = async () => {
       // Owner can always access the bot so maintenance can be switched off.
       // Do not let a stalled MongoDB query block Telegram updates indefinitely.
       let maintenanceEnabled = false;
-      if (currentUserId !== String(ownerId || "")) {
+      if (!currentUserIsOwner) {
         try {
           maintenanceEnabled = await Promise.race([
             isMaintenanceEnabled(),
@@ -225,7 +231,7 @@ const main = async () => {
 
         if (!group || !group.isActive) {
           // If not registered, only allow /register from owner
-          if (isRegisterCommand && currentUserId === ownerId) {
+          if (isRegisterCommand && currentUserIsOwner) {
             return next();
           }
           return; // Strictly silent in unregistered groups

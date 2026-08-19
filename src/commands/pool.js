@@ -2,13 +2,12 @@ const { Composer } = require("telegraf");
 const { getPoolBalance, addToPool } = require("../modules/pool.module");
 const logger = require("../logger");
 
+const { isOwner } = require("../modules/owner.module");
+
 const composer = new Composer();
 
 composer.command("addpool", async (ctx) => {
-  const ownerId = process.env.OWNER_ID;
-  const userId = ctx.from.id.toString();
-
-  if (ownerId !== userId) return;
+  if (!isOwner(ctx)) return;
 
   const text = ctx.message.text || "";
   const args = text.split(" ");

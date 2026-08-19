@@ -2,6 +2,7 @@ const { Scenes, Markup } = require("telegraf");
 const { message } = require("telegraf/filters");
 const logger = require("../logger");
 const { isMaintenanceEnabled, setMaintenanceEnabled } = require("../modules/maintenance.module");
+const { isOwner: matchesOwner } = require("../modules/owner.module");
 const {
   getPaymentConfig,
   savePaymentConfig,
@@ -14,7 +15,7 @@ const {
 const gramWalletScene = new Scenes.BaseScene("gram-wallet");
 
 function isOwner(ctx) {
-  return String(ctx.from?.id) === String(process.env.OWNER_ID) && ctx.chat?.type === "private";
+  return matchesOwner(ctx) && ctx.chat?.type === "private";
 }
 
 function walletButtons() {

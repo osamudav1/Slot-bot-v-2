@@ -1,9 +1,10 @@
 const { Composer, Markup } = require("telegraf");
 const GramPurchase = require("../database/entity/gram-purchase.entity");
+const { isOwner: matchesOwner } = require("../modules/owner.module");
 const composer = new Composer();
 
 function isOwner(ctx) {
-  return String(ctx.from?.id) === String(process.env.OWNER_ID) && ctx.chat?.type === "private";
+  return matchesOwner(ctx) && ctx.chat?.type === "private";
 }
 
 async function renderDeposits(ctx) {

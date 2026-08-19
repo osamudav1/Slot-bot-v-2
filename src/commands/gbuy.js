@@ -3,6 +3,8 @@ const Config = require("../database/entity/config.entity");
 const User = require("../database/entity/user.entitiy");
 const logger = require("../logger");
 
+const { isOwner } = require("../modules/owner.module");
+
 const composer = new Composer();
 
 // Helper to get bot switch status
@@ -45,8 +47,7 @@ const incrementDailyCount = async (userId) => {
 
 // Owner Commands for on/off
 const ownerBotControl = async (ctx, botName) => {
-  const ownerId = process.env.OWNER_ID;
-  if (ctx.from.id.toString() !== ownerId) return;
+  if (!isOwner(ctx)) return;
 
   const args = ctx.message.text.split(" ");
   const action = args[1]?.toLowerCase();
@@ -182,8 +183,7 @@ composer.on("message", async (ctx, next) => {
 // Owner reply handler
 composer.action(/^gbuy_reply_(\d+)$/, async (ctx) => {
   const targetUserId = ctx.match[1];
-  const ownerId = process.env.OWNER_ID;
-  if (ctx.from.id.toString() !== ownerId) return ctx.answerCbQuery("Not authorized");
+  if (!isOwner(ctx)) return ctx.answerCbQuery("Not authorized");
 
   ctx.session = ctx.session || {};
   ctx.session.owner_reply_to = targetUserId;

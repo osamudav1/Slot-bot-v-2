@@ -2,11 +2,12 @@ const { Composer } = require("telegraf");
 const User = require("../database/entity/user.entitiy");
 const logger = require("../logger");
 
+const { isOwner } = require("../modules/owner.module");
+
 const composer = new Composer();
 
 composer.command("broadcast", async (ctx) => {
-  const ownerId = process.env.OWNER_ID;
-  if (ctx.from.id.toString() !== ownerId) return;
+  if (!isOwner(ctx)) return;
 
   const message = ctx.message.text.split(" ").slice(1).join(" ");
   if (!message && !ctx.message.reply_to_message) {

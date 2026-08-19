@@ -1,13 +1,14 @@
 const { Composer } = require("telegraf");
 const { registerGroup } = require("../modules/group.module");
 
+const { isOwner } = require("../modules/owner.module");
+
 const composer = new Composer();
 
 composer.command("register", async (ctx) => {
-  const ownerId = process.env.OWNER_ID;
   const currentUserId = ctx.from.id.toString();
 
-  if (ownerId && currentUserId !== ownerId) {
+  if (!isOwner(ctx)) {
     return; // Ignore if not owner
   }
 

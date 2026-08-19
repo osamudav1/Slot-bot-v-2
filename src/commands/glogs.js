@@ -1,6 +1,8 @@
 const { Composer, Markup } = require("telegraf");
 const Group = require("../database/entity/group.entity");
 
+const { isOwner } = require("../modules/owner.module");
+
 const composer = new Composer();
 
 const GROUPS_PER_PAGE = 20;
@@ -29,16 +31,14 @@ const getGroupListPage = async (page) => {
 };
 
 composer.command("glogs", async (ctx) => {
-  const ownerId = process.env.OWNER_ID;
-  if (ctx.from.id.toString() !== ownerId) return;
+  if (!isOwner(ctx)) return;
 
   const { text, keyboard } = await getGroupListPage(1);
   await ctx.replyWithMarkdown(text, keyboard);
 });
 
 composer.action(/glogs_page_(\d+)/, async (ctx) => {
-  const ownerId = process.env.OWNER_ID;
-  if (ctx.from.id.toString() !== ownerId) return ctx.answerCbQuery("Not authorized");
+  if (!isOwner(ctx)) return ctx.answerCbQuery("Not authorized");
 
   const page = parseInt(ctx.match[1]);
   const { text, keyboard } = await getGroupListPage(page);

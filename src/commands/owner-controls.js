@@ -9,9 +9,10 @@ const {
   resetOwnerSettings,
 } = require("../modules/owner-settings.module");
 
+const { isOwner } = require("../modules/owner.module");
+
 const composer = new Composer();
 
-const isOwner = (ctx) => String(ctx.from?.id) === String(process.env.OWNER_ID);
 const ownerOnly = async (ctx) => {
   if (!isOwner(ctx)) {
     await ctx.reply("🔒 Owner only.").catch(() => {});

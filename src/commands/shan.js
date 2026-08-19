@@ -40,46 +40,16 @@ const getRankValue = (card) => RANK_VALUE[card.value] || Number(card.value);
 
 const calculatePoints = (cards) => cards.reduce((sum, card) => sum + getCardValue(card), 0) % 10;
 
-const getHandInfo = (cards) => {
-  const counts = new Map();
-  for (const card of cards) counts.set(card.value, (counts.get(card.value) || 0) + 1);
-
-  const groups = [...counts.entries()]
-    .map(([value, count]) => ({ value, count, rank: RANK_VALUE[value] || Number(value) }))
-    .sort((a, b) => b.count - a.count || b.rank - a.rank);
-  const sortedCards = [...cards].sort((a, b) => getRankValue(b) - getRankValue(a) || SUIT_STRENGTH[b.suit] - SUIT_STRENGTH[a.suit]);
-  const category = groups[0]?.count === 3 ? 3 : groups[0]?.count === 2 ? 2 : 1;
-  const categoryName = category === 3 ? "Three-of-a-kind" : category === 2 ? "Pair" : "Point";
-
-  return {
-    category,
-    categoryName,
-    points: calculatePoints(cards),
-    groups,
-    highestCard: sortedCards[0],
-    tieBreakers: sortedCards.map((card) => getRankValue(card)),
-  };
-};
+const getHandInfo = (cards) => ({
+  // Shan now uses points only. Pair, three-of-a-kind, rank, and suit do not
+  // change the winner; the final point number is the sole comparison value.
+  category: 1,
+  categoryName: "Point",
+  points: calculatePoints(cards),
+});
 
 const compareHands = (left, right) => {
-  if (left.category !== right.category) return left.category > right.category ? 1 : -1;
-
-  if (left.category === 3 || left.category === 2) {
-    const leftGroup = left.groups[0];
-    const rightGroup = right.groups[0];
-    if (leftGroup.rank !== rightGroup.rank) return leftGroup.rank > rightGroup.rank ? 1 : -1;
-  }
-
   if (left.points !== right.points) return left.points > right.points ? 1 : -1;
-
-  for (let i = 0; i < Math.max(left.tieBreakers.length, right.tieBreakers.length); i += 1) {
-    if ((left.tieBreakers[i] || 0) !== (right.tieBreakers[i] || 0)) {
-      return (left.tieBreakers[i] || 0) > (right.tieBreakers[i] || 0) ? 1 : -1;
-    }
-  }
-
-  // Same ranked cards are a tie; suit never breaks a Shan tie.
-  // This keeps equal numbers equal while K (13) correctly beats Q (12).
   return 0;
 };
 
@@ -89,7 +59,7 @@ const money = (cents) => `$${(cents / 100).toLocaleString(undefined, { minimumFr
 const shouldBankerDraw = (hand) => {
   const info = getHandInfo(hand);
   // Banker draws exactly one card when its point is 1–4; it stands on 5–9.
-  return info.category === 1 && info.points >= 1 && info.points <= 4;
+  return info.points >= 1 && info.points <= 4;
 };
 
 const settleGame = async (ctx, gameKey, isTimeout = false) => {

@@ -10,7 +10,7 @@ const KEYS = {
 };
 
 const DEFAULTS = {
-  winRate: 36,
+  winRate: 37,
   minBet: 500,
   maxBet: 25000,
   cooldown: 8000,
@@ -35,7 +35,9 @@ const loadSettings = async () => {
     const migrated = {};
     for (const name of Object.keys(KEYS)) {
       const raw = byKey.get(KEYS[name]);
-      const legacyDefault = name === "minBet" && Number(raw) === 2000
+      const legacyDefault = name === "winRate" && Number(raw) === 36
+        ? DEFAULTS.winRate
+        : name === "minBet" && Number(raw) === 2000
         ? DEFAULTS.minBet
         : name === "maxBet" && Number(raw) === 50000
           ? DEFAULTS.maxBet

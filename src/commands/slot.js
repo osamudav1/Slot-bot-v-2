@@ -12,23 +12,23 @@ const lastSpinTime = new Map();
 
 // ─── WLJ CONFIG ──────────────────────────────────────────────────────────────
 // Defaults — owner can change at runtime via /wlj command
-const DEFAULT_WIN       = 36;   // base win %
+const DEFAULT_WIN       = 37;   // base win % above the $2,000 pool threshold
 const DEFAULT_JACKPOT   = 0.1;  // 4-diamond jackpot %
 // Lose% is always derived: 100 - win - jackpot
 
 // Streak adjustment defaults
-const DEFAULT_BOOST     = 15;   // +Win% after 3+ consec. losses
+const DEFAULT_BOOST     = 5;    // +5 Win% after 3+ consecutive losses
 const DEFAULT_REDUCE    = 10;   // -Win% after 2+ consec. wins
-const DEFAULT_MAX_WIN   = 55;
-const DEFAULT_MIN_WIN   = 20;
+const DEFAULT_MAX_WIN   = 42;
+const DEFAULT_MIN_WIN   = 37;
 
 // Pool safety: below $5,000, reduce Win%; above it, recover gradually.
 // Values are stored in cents throughout the bot.
-const POOL_SAFETY_THRESHOLD = 500000; // $5,000 reserve floor
-const POOL_RECOVERY_START = 500000; // recovery starts at $5,000
-const POOL_RECOVERY_BAND_END = 600000; // 5% recovery band ends at $6,000
-const POOL_RATE_RECOVERY_TARGET = 1000000; // full base rate is reached gradually by $10,000
-const POOL_SAFETY_MIN_WIN = 0; // below reserve: normal win blocked, 0.1% jackpot configured, reserve guard protects payout
+const POOL_SAFETY_THRESHOLD = 200000; // $2,000 reserve floor
+const POOL_RECOVERY_START = 200000; // normal odds start above $2,000
+const POOL_RECOVERY_BAND_END = 200000; // no gradual band below the threshold
+const POOL_RATE_RECOVERY_TARGET = 200000; // base rate applies once the threshold is crossed
+const POOL_SAFETY_MIN_WIN = 0; // below reserve: all normal-user wins are blocked
 const LOW_POOL_NORMAL_WIN = 0;
 const RECOVERY_STEP = 5;
 const MAX_RECOVERY_BOOSTS = 2;
@@ -60,30 +60,16 @@ const getWLJ = (userId, poolBalance = POOL_RATE_RECOVERY_TARGET) => {
   const cfg  = getCfg();
 
   const balance = Number(poolBalance);
-  const state = recoveryState.get(userId) || { attempts: 0, exhausted: false };
-
   if (balance < POOL_RECOVERY_START) {
     recoveryState.delete(userId);
-    return { W: LOW_POOL_NORMAL_WIN, L: 99.9, J: cfg.jackpot };
+    return { W: LOW_POOL_NORMAL_WIN, L: 100, J: 0 };
   }
 
-  const poolRatio = Math.max(0, Math.min(1, balance / POOL_RATE_RECOVERY_TARGET));
-  let winRate = Math.min(cfg.maxWin, POOL_SAFETY_MIN_WIN + ((cfg.win - POOL_SAFETY_MIN_WIN) * poolRatio));
-  const inRecoveryBand = balance < POOL_RECOVERY_BAND_END;
-  const hasLossStreak = hist.length >= 3 && hist.slice(-3).every(r => r === "L");
-
-  if (inRecoveryBand) {
-    // At $5,000–$6,000, allow only two +5-point recovery attempts after a loss streak.
-    if (state.exhausted || !hasLossStreak) {
-      winRate = Math.min(winRate, inRecoveryBand ? 5 : winRate);
-    } else {
-      winRate = Math.min(cfg.maxWin, 5 + ((state.attempts + 1) * RECOVERY_STEP));
-    }
-  } else if (hasLossStreak) {
-    winRate = Math.min(winRate + cfg.boost, cfg.maxWin);
-  } else if (hist.length >= 2 && hist.slice(-2).every(r => r === "W")) {
-    winRate = Math.max(winRate - cfg.reduce, cfg.minWin);
-  }
+  // Above $2,000, use 37% normally. After a loss, add +5% for the next
+  // round; a win records "W", so the boost disappears immediately.
+  let winRate = Math.min(cfg.maxWin, cfg.win);
+  const hasPreviousLoss = hist.length > 0 && hist[hist.length - 1] === "L";
+  if (hasPreviousLoss) winRate = Math.min(winRate + cfg.boost, cfg.maxWin);
 
   const loseRate = Math.max(0, 100 - cfg.jackpot - winRate);
   return { W: winRate, L: loseRate, J: cfg.jackpot };

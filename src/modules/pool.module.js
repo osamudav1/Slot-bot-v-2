@@ -4,24 +4,21 @@ const POOL_KEY = "game_payout_pool";
 
 const toCents = (amount) => {
   const value = Number(amount);
-  return Number.isFinite(value) ? Math.max(0, Math.floor(value)) : 0;
-};
-
-const numericValue = {
-  $convert: {
-    input: { $ifNull: ["$value", 0] },
-    to: "long",
-    onError: 0,
-    onNull: 0,
-  },
+  return Number.isSafeInteger(value) && value >= 0 ? value : 0;
 };
 
 const getPoolBalance = async () => {
   const config = await Config.findOne({ key: POOL_KEY }).lean();
   const balance = toCents(config?.value);
 
-  // Repair legacy negative/corrupt values so every caller sees a safe balance.
-  if (config && Number(config.value) !== balance) {
+  // Repair missing, negative, string, or otherwise invalid legacy values.
+  if (!config) {
+    await Config.updateOne(
+      { key: POOL_KEY },
+      { $setOnInsert: { value: 0 } },
+      { upsert: true }
+    );
+  } else if (Number(config.value) !== balance) {
     await Config.updateOne({ key: POOL_KEY }, { $set: { value: balance } });
   }
 
@@ -32,12 +29,14 @@ const addToPool = async (amount) => {
   const cents = toCents(amount);
   if (cents === 0) return getPoolBalance();
 
-  // Atomic increment: concurrent losses are accumulated instead of overwriting one another.
+  // Ensure legacy/corrupt values are normalized before the atomic increment.
+  await getPoolBalance();
   const updated = await Config.findOneAndUpdate(
     { key: POOL_KEY },
-    [{ $set: { value: { $add: [numericValue, cents] } } }],
-    { upsert: true, new: true }
-  );
+    { $inc: { value: cents } },
+    { upsert: true, new: true, setDefaultsOnInsert: true }
+  ).lean();
+
   return toCents(updated?.value);
 };
 
@@ -45,13 +44,25 @@ const subtractFromPool = async (amount) => {
   const cents = toCents(amount);
   if (cents === 0) return getPoolBalance();
 
-  // Atomic subtraction with a zero floor: concurrent wins cannot create a negative pool.
+  await getPoolBalance();
+  // Atomic subtraction with a zero floor. If the available pool is lower than
+  // the requested profit, the stored balance remains unchanged at zero.
   const updated = await Config.findOneAndUpdate(
-    { key: POOL_KEY },
-    [{ $set: { value: { $max: [0, { $subtract: [numericValue, cents] }] } } }],
-    { upsert: true, new: true }
-  );
-  return toCents(updated?.value);
+    {
+      key: POOL_KEY,
+      $expr: {
+        $gte: [
+          { $convert: { input: "$value", to: "long", onError: 0, onNull: 0 } },
+          cents,
+        ],
+      },
+    },
+    { $inc: { value: -cents } },
+    { new: true }
+  ).lean();
+
+  if (updated) return toCents(updated.value);
+  return getPoolBalance();
 };
 
 module.exports = {

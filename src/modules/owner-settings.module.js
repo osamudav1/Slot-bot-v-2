@@ -11,8 +11,8 @@ const KEYS = {
 
 const DEFAULTS = {
   winRate: 36,
-  minBet: 2000,
-  maxBet: 50000,
+  minBet: 500,
+  maxBet: 25000,
   cooldown: 8000,
   pauseSlot: false,
   pauseShan: false,
@@ -32,7 +32,17 @@ const loadSettings = async () => {
   if (loading) return loading;
   loading = Config.find({ key: { $in: Object.values(KEYS) } }).lean().then((rows) => {
     const byKey = new Map(rows.map((row) => [row.key, row.value]));
-    cache = Object.fromEntries(Object.keys(KEYS).map((name) => [name, normalize(name, byKey.get(KEYS[name]) ?? DEFAULTS[name])]));
+    const migrated = {};
+    for (const name of Object.keys(KEYS)) {
+      const raw = byKey.get(KEYS[name]);
+      const legacyDefault = name === "minBet" && Number(raw) === 2000
+        ? DEFAULTS.minBet
+        : name === "maxBet" && Number(raw) === 50000
+          ? DEFAULTS.maxBet
+          : raw ?? DEFAULTS[name];
+      migrated[name] = normalize(name, legacyDefault);
+    }
+    cache = migrated;
     loading = null;
     return cache;
   }).catch((error) => {

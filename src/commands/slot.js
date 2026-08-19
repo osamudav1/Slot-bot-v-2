@@ -136,7 +136,7 @@ const slotHandler = async (ctx) => {
       ownerSettings = await getOwnerSettings();
     } catch (settingsError) {
       logger.error(`Slot settings error: ${settingsError.message}`);
-      ownerSettings = { winRate: DEFAULT_WIN, minBet: 2000, maxBet: 50000, cooldown: 8000, pauseSlot: false };
+      ownerSettings = { winRate: DEFAULT_WIN, minBet: 500, maxBet: 25000, cooldown: 8000, pauseSlot: false };
     }
     if (ownerSettings.pauseSlot && !isOwner(ctx)) {
       return ctx.reply("🛠 Slot game is temporarily paused by owner.").catch(() => {});
@@ -151,7 +151,7 @@ const slotHandler = async (ctx) => {
     }
 
     const args = text.split(" ");
-    betAmount = args[1] ? Math.floor(parseFloat(args[1]) * 100) : 100;
+    betAmount = args[1] ? Math.floor(parseFloat(args[1]) * 100) : 0;
 
     if (isNaN(betAmount) || betAmount <= 0) {
       return ctx.reply("Usage: /slot <amount_in_dollars>\nExample: /slot 1.5");

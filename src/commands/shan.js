@@ -114,7 +114,7 @@ const settleGame = async (ctx, gameKey, isTimeout = false) => {
       await credit(game.userId, payout);
       await subtractFromPool(profit);
       await decreaseBankAmount({ ctx, decreaseAmont: profit }).catch((error) => logger.error(`Bank decrease error: ${error.message}`));
-      resultText = `👤 Player Win\nWin - ${money(profit)}`;
+      resultText = `👤 User Win +${money(payout)}`;
     } else if (result === "BANKER") {
       await addToPool(game.betAmount);
       await increaseBankAmount({ ctx, increaseAmount: game.betAmount }).catch((error) => logger.error(`Bank increase error: ${error.message}`));
@@ -158,7 +158,7 @@ const shanHandler = async (ctx) => {
       ownerSettings = await getOwnerSettings();
     } catch (settingsError) {
       logger.error(`Shan settings error: ${settingsError.message}`);
-      ownerSettings = { minBet: 2000, maxBet: 50000, cooldown: 8000, pauseShan: false };
+      ownerSettings = { minBet: 500, maxBet: 25000, cooldown: 8000, pauseShan: false };
     }
     if (ownerSettings.pauseShan && !isOwner(ctx)) {
       return ctx.reply("🛠 Shan game is temporarily paused by owner.").catch(() => {});
@@ -171,7 +171,7 @@ const shanHandler = async (ctx) => {
     }
 
     const args = (ctx.message.text || "").trim().split(/\s+/);
-    const betAmount = args[1] ? Math.floor(Number(args[1]) * 100) : 100;
+    const betAmount = args[1] ? Math.floor(Number(args[1]) * 100) : 0;
     if (!Number.isFinite(betAmount) || betAmount <= 0) return ctx.reply("အသုံးပြုပုံ: /shan <ပမာဏ_ဒေါ်လာ>\nဥပမာ: /shan 20");
     if (betAmount < ownerSettings.minBet) return ctx.reply(`🔴 အနည်းဆုံး $${(ownerSettings.minBet / 100).toFixed(2)} လောင်းရပါမည်။`);
     if (betAmount > ownerSettings.maxBet) return ctx.reply(`🔴 အများဆုံး $${(ownerSettings.maxBet / 100).toFixed(2)} ထိသာ လောင်းနိုင်ပါသည်။`);

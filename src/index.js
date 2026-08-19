@@ -12,7 +12,6 @@ const { isMaintenanceEnabled } = require("./modules/maintenance.module");
 const { isOwner } = require("./modules/owner.module");
 
 const User = require("./database/entity/user.entitiy");
-const { hydrateFromMongo } = require("./modules/slot-wallet.module");
 
 const withTimeout = (promise, timeoutMs, label) => Promise.race([
   promise,
@@ -172,8 +171,7 @@ const main = async () => {
 
   try {
     await connectDB();
-    // One-time migration only: gameplay thereafter uses the local Slot Wallet.
-    await hydrateFromMongo(User);
+    // Slot Wallet is local-persistent only; never reseed it from legacy MongoDB data on restart.
     const bot = new Telegraf(process.env.TELEGRAM_BOT_TOKEN);
 
     bot.catch((error) => {

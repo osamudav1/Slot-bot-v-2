@@ -12,6 +12,7 @@ const { isMaintenanceEnabled } = require("./modules/maintenance.module");
 const { isOwner } = require("./modules/owner.module");
 
 const User = require("./database/entity/user.entitiy");
+const { hydrateFromMongo } = require("./modules/slot-wallet.module");
 
 const withTimeout = (promise, timeoutMs, label) => Promise.race([
   promise,
@@ -171,7 +172,8 @@ const main = async () => {
 
   try {
     await connectDB();
-    // Slot Wallet is local-persistent only; never reseed it from legacy MongoDB data on restart.
+    // Recover existing balances only when the local wallet file is missing; no default credit is assigned.
+    await hydrateFromMongo(User);
     const bot = new Telegraf(process.env.TELEGRAM_BOT_TOKEN);
 
     bot.catch((error) => {

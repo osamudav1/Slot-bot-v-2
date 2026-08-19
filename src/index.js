@@ -48,7 +48,6 @@ const setBotCommands = async (bot) => {
   // Owner-only controls are deliberately excluded from all user scopes.
   const userCommands = [
     { command: "start", description: "Bot စတင်ရန်" },
-    { command: "help", description: "အကူအညီကြည့်ရန်" },
     { command: "wallet", description: "Wallet လက်ကျန်ကြည့်ရန်" },
     { command: "exchange", description: "Waifu နှင့် wallet လဲလှယ်ရန်" },
     { command: "slot", description: "Slot ဆော့ရန်" },
@@ -63,6 +62,7 @@ const setBotCommands = async (bot) => {
   // Owner DM menu: all normal commands plus every owner control.
   const ownerCommands = [
     ...userCommands,
+    { command: "help", description: "အကူအညီကြည့်ရန်" },
     { command: "ownerhelp", description: "Owner command အားလုံး" },
     { command: "pool", description: "Payout pool စစ်ရန်" },
     { command: "addpool", description: "Payout pool ထည့်ရန်" },
@@ -122,8 +122,8 @@ const setBotCommands = async (bot) => {
 const main = async () => {
   dotenv.config();
   
-  // Enable auto-registration for groups
-  global.autoRegister = true;
+  // Groups must be explicitly registered by the owner before commands are usable.
+  global.autoRegister = false;
 
   // 🆕 BOT START TIME - မက်ဆေ့ခ်ျဟောင်းတွေကို စစ်ထုတ်ဖို့
   const BOT_START_TIME = Date.now();
@@ -176,7 +176,7 @@ const main = async () => {
       const currentUserIsOwner = isOwner(ctx);
       const commandText = String(ctx.message?.text || ctx.callbackQuery?.message?.text || "");
       const commandName = commandText.trim().split(/\s+/)[0].split("@")[0].toLowerCase();
-      const alwaysAllowedCommands = new Set(["/start", "/help", "/wallet", "/exchange"]);
+      const alwaysAllowedCommands = new Set(["/start", "/wallet", "/exchange"]);
 
       // Owner can always access the bot so maintenance can be switched off.
       // Do not let a stalled MongoDB query block Telegram updates indefinitely.
@@ -222,19 +222,16 @@ const main = async () => {
         const text = ctx.message?.text || "";
         const isRegisterCommand = text.startsWith("/register");
         
-        // If manual registration is OFF (autoRegister is true), auto-register if not active
-        if (global.autoRegister && (!group || !group.isActive)) {
-          let groupLink = ctx.chat.username ? `https://t.me/${ctx.chat.username}` : null;
-          await registerGroup(ctx.chat.id.toString(), ctx.chat.title, ownerId, groupLink).catch(e => logger.error("Auto-register error: " + e.message));
-          return next();
-        }
-
         if (!group || !group.isActive) {
-          // If not registered, only allow /register from owner
+          // Only the owner may register an unregistered group. All other
+          // commands, including /slot and /shan, are blocked until then.
           if (isRegisterCommand && currentUserIsOwner) {
             return next();
           }
-          return; // Strictly silent in unregistered groups
+          if (ctx.chat?.type === "group" || ctx.chat?.type === "supergroup") {
+            await ctx.reply("⛔ ဤ group ကို owner မှ register မလုပ်ရသေးပါ။");
+          }
+          return;
         }
       }
       return next();
@@ -271,12 +268,6 @@ const main = async () => {
             `Total count: ${totalGroups}`;
           
           await ctx.telegram.sendMessage(ownerId, ownerMsg).catch(err => logger.error("Failed to notify owner: " + err.message));
-        }
-
-        // Auto-register if global.autoRegister is true
-        if (global.autoRegister) {
-            await registerGroup(groupId, groupName, ownerId, groupLink).catch(e => logger.error("Auto-register on join error: " + e.message));
-            return ctx.reply("♻️ Approved ♻️ (Auto-registered)");
         }
 
         return ctx.reply(

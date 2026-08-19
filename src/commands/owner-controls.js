@@ -151,8 +151,9 @@ composer.command("stats", async (ctx) => {
 composer.command("resetcontrol", async (ctx) => {
   if (!(await ownerOnly(ctx))) return;
   await resetOwnerSettings();
-  logger.info("Owner reset game control settings");
-  return ctx.reply(`✅ Controls reset. Win ${DEFAULTS.winRate}%, limits ${dollars(DEFAULTS.minBet)}-${dollars(DEFAULTS.maxBet)}, cooldown ${DEFAULTS.cooldown / 1000}s.`);
+  global.autoRegister = true;
+  logger.info("Owner reset game control settings and enabled auto registration");
+  return ctx.reply(`✅ Controls reset. Auto Register ON. Win ${DEFAULTS.winRate}%, limits ${dollars(DEFAULTS.minBet)}-${dollars(DEFAULTS.maxBet)}, cooldown ${DEFAULTS.cooldown / 1000}s.`);
 });
 
 module.exports = composer;

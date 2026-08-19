@@ -247,8 +247,26 @@ const main = async () => {
         const isRegisterCommand = text.startsWith("/register");
         
         if (!group || !group.isActive) {
-          // Only the owner may register an unregistered group. All other
-          // commands, including /slot and /shan, are blocked until then.
+          if (global.autoRegister === true) {
+            try {
+              group = await withTimeout(
+                registerGroup(
+                  ctx.chat.id.toString(),
+                  ctx.chat.title,
+                  currentUserId,
+                  ctx.chat.username ? `https://t.me/${ctx.chat.username}` : null
+                ),
+                2000,
+                "Automatic group registration"
+              );
+              logger.info(`Auto-registered group ${ctx.chat.id}`);
+              return next();
+            } catch (autoRegisterError) {
+              logger.error(`Auto registration failed: ${autoRegisterError.message}`);
+            }
+          }
+
+          // Manual mode: only the owner may register an unregistered group.
           if (isRegisterCommand && currentUserIsOwner) {
             return next();
           }

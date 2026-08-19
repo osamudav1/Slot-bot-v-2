@@ -43,6 +43,11 @@ const getBalance = (userId) => {
   return wallets.get(String(userId)) || 0;
 };
 
+const listBalances = () => {
+  load();
+  return Array.from(wallets.entries()).map(([userId, cents]) => ({ userId, cents }));
+};
+
 const runExclusive = (operation) => {
   const result = operationQueue.then(operation, operation);
   operationQueue = result.catch(() => {});
@@ -81,4 +86,4 @@ const hydrateFromMongo = async (User) => {
   await persist();
 };
 
-module.exports = { getBalance, setBalance, credit, debit, hydrateFromMongo, WALLET_FILE };
+module.exports = { getBalance, listBalances, setBalance, credit, debit, hydrateFromMongo, WALLET_FILE };

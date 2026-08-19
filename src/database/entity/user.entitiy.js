@@ -17,6 +17,10 @@ const userSchema = new mongoose.Schema({
     default: 0,
     min: 0,
   },
+  slot_wallet_migration_id: {
+    type: String,
+    default: null,
+  },
   last_payback_time: {
     type: Number,
     default: 0,

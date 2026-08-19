@@ -10,6 +10,8 @@ const {
 } = require("../modules/owner-settings.module");
 
 const { isOwner } = require("../modules/owner.module");
+const { setMaintenanceEnabled } = require("../modules/maintenance.module");
+const { migrateSlotWalletsToWaifu } = require("../modules/slot-wallet-reset.module");
 
 const composer = new Composer();
 
@@ -37,6 +39,7 @@ composer.command("ownerhelp", async (ctx) => {
     "/adjust <id> <amount$> — balance ပြင်ရန်",
     "/stats — bot/game statistics",
     "/resetcontrol — owner settings reset",
+    "/reset — maintenance + Slot wallet ကို user တစ်ယောက်ချင်း Waifu ထဲပြန်လွှဲရန်",
     "/maintenance on|off — maintenance mode",
     "/addpool <amount$> — payout pool ထည့်ရန်",
   ].join("\n"));
@@ -146,6 +149,39 @@ composer.command("stats", async (ctx) => {
     `Win Rate: ${settings.winRate}%`,
     `Paused: slot=${settings.pauseSlot ? "yes" : "no"}, shan=${settings.pauseShan ? "yes" : "no"}`,
   ].join("\n"));
+});
+
+composer.command("reset", async (ctx) => {
+  if (!(await ownerOnly(ctx)) || ctx.chat?.type !== "private") return;
+  await setMaintenanceEnabled(true);
+  await ctx.reply("🛠 Maintenance ON. User Slot Wallet များကို ၅ ယောက်စီ Waifu Wallet ထဲ ပြန်လွှဲနေပါသည်...");
+
+  try {
+    const summary = await migrateSlotWalletsToWaifu({
+      onBatch: async ({ batchNumber, completed, total, results }) => {
+        const moved = results.filter((item) => ["migrated", "already_migrated"].includes(item.status));
+        const failed = results.filter((item) => item.status === "failed");
+        await ctx.reply([
+          `✅ Batch #${batchNumber} ပြီးပါပြီ (${completed}/${total})`,
+          `ပြောင်းပြီးငွေ: ${dollars(moved.reduce((sum, item) => sum + item.cents, 0))}`,
+          failed.length ? `မအောင်မြင်: ${failed.map((item) => item.userId).join(", ")}` : "မအောင်မြင်သူ: 0",
+        ].join("\n"));
+      },
+    });
+
+    await ctx.reply([
+      "✅ Slot → Waifu migration ပြီးပါပြီ။",
+      `User စုစုပေါင်း: ${summary.totalUsers}`,
+      `အောင်မြင်: ${summary.migratedUsers}`,
+      `မအောင်မြင်: ${summary.failedUsers}`,
+      `ပြောင်းလဲငွေ စုစုပေါင်း: ${dollars(summary.totalCents)}`,
+      "🎰 Slot Wallet များကို $0 သို့ reset လုပ်ပြီးပါပြီ။",
+    ].join("\n"));
+    logger.info(`Owner reset migrated ${summary.migratedUsers}/${summary.totalUsers} Slot wallets`);
+  } catch (error) {
+    logger.error(`Owner reset migration failed: ${error.stack || error.message}`);
+    await ctx.reply("❌ Migration မအောင်မြင်ပါ။ Maintenance ဆက် ON ထားပြီး ထပ်စစ်ရန်လိုပါသည်။");
+  }
 });
 
 composer.command("resetcontrol", async (ctx) => {

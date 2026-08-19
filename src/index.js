@@ -11,6 +11,7 @@ const { getUser } = require("./modules/user.module");
 const { isMaintenanceEnabled } = require("./modules/maintenance.module");
 
 const User = require("./database/entity/user.entitiy");
+const { hydrateFromMongo } = require("./modules/slot-wallet.module");
 
 const loadCommands = async (bot) => {
   logger.info(`Commands loading...`);
@@ -42,39 +43,73 @@ const loadScenes = async (bot) => {
 const setBotCommands = async (bot) => {
   const ownerId = process.env.OWNER_ID;
 
-  // Keep Telegram's visible menu intentionally minimal. Other commands
-  // remain functional when typed, but only /start is shown in the menu.
-  const visibleCommands = [
+  // User menu: gameplay, wallet, and normal utility commands only.
+  // Owner-only controls are deliberately excluded from all user scopes.
+  const userCommands = [
     { command: "start", description: "Bot စတင်ရန်" },
+    { command: "help", description: "အကူအညီကြည့်ရန်" },
+    { command: "wallet", description: "Wallet လက်ကျန်ကြည့်ရန်" },
+    { command: "exchange", description: "Waifu နှင့် wallet လဲလှယ်ရန်" },
+    { command: "slot", description: "Slot ဆော့ရန်" },
+    { command: "shan", description: "ရှမ်းကိုးမီး ဆော့ရန်" },
+    { command: "ranking", description: "အဆင့်စာရင်းကြည့်ရန်" },
+    { command: "daily", description: "နေ့စဉ်ဆုယူရန်" },
+    { command: "salary", description: "လစာဆုယူရန်" },
+    { command: "case", description: "Case ဖွင့်ရန်" },
+    { command: "mgift", description: "ငွေလွှဲရန်" },
   ];
+
+  // Owner DM menu: all normal commands plus every owner control.
+  const ownerCommands = [
+    ...userCommands,
+    { command: "ownerhelp", description: "Owner command အားလုံး" },
+    { command: "pool", description: "Payout pool စစ်ရန်" },
+    { command: "addpool", description: "Payout pool ထည့်ရန်" },
+    { command: "setwin", description: "Win rate သတ်မှတ်ရန်" },
+    { command: "setlimit", description: "Bet limit သတ်မှတ်ရန်" },
+    { command: "setcooldown", description: "Cooldown သတ်မှတ်ရန်" },
+    { command: "pausegame", description: "Game ခဏရပ်/ဖွင့်ရန်" },
+    { command: "user", description: "User balance စစ်ရန်" },
+    { command: "adjust", description: "User balance ပြင်ရန်" },
+    { command: "stats", description: "Bot statistics ကြည့်ရန်" },
+    { command: "resetcontrol", description: "Control settings reset" },
+    { command: "maintenance", description: "Maintenance mode" },
+    { command: "register", description: "Group register လုပ်ရန်" },
+    { command: "logs", description: "Logs ကြည့်ရန်" },
+    { command: "glogs", description: "Guess logs ကြည့်ရန်" },
+    { command: "gramwallet", description: "Gram wallet စစ်ရန်" },
+    { command: "gramdeposits", description: "Gram deposits ကြည့်ရန်" },
+    { command: "wlj", description: "Slot Win/Lose settings" },
+  ];
+
   const userScopes = [
     { type: "all_private_chats" },
     { type: "all_group_chats" },
   ];
 
-  // Clear the old default and user scopes, then explicitly set /start.
+  // Clear default and user scopes first so Telegram does not retain old menus.
   await bot.telegram.deleteMyCommands().catch((err) =>
     logger.error(`Failed to clear default command scope: ${err.message}`)
   );
-  await bot.telegram.setMyCommands(visibleCommands);
+  await bot.telegram.setMyCommands(userCommands);
   for (const scope of userScopes) {
     await bot.telegram.deleteMyCommands({ scope }).catch((err) =>
       logger.error(`Failed to clear command scope ${scope.type}: ${err.message}`)
     );
-    await bot.telegram.setMyCommands(visibleCommands, { scope });
+    await bot.telegram.setMyCommands(userCommands, { scope });
   }
 
-  // Clear any previously registered owner-only menu. Owner also sees /start only.
+  // Only the owner’s private chat receives the full owner command menu.
   const ownerChatId = Number(ownerId);
   if (Number.isSafeInteger(ownerChatId)) {
     const ownerScope = { type: "chat", chat_id: ownerChatId };
     await bot.telegram.deleteMyCommands({ scope: ownerScope }).catch((err) =>
       logger.error(`Failed to clear owner command scope: ${err.message}`)
     );
-    await bot.telegram.setMyCommands(visibleCommands, { scope: ownerScope });
+    await bot.telegram.setMyCommands(ownerCommands, { scope: ownerScope });
   }
 
-  logger.success("Bot command menu limited to /start");
+  logger.success("User and owner command menus configured");
 };
 
 const main = async () => {
@@ -115,6 +150,8 @@ const main = async () => {
 
   try {
     await connectDB();
+    // One-time migration only: gameplay thereafter uses the local Slot Wallet.
+    await hydrateFromMongo(User);
     const bot = new Telegraf(process.env.TELEGRAM_BOT_TOKEN);
 
     bot.catch((error) => {

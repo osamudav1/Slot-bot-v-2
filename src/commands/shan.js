@@ -1,7 +1,7 @@
 const { Composer, Markup } = require("telegraf");
 const { increaseBankAmount, decreaseBankAmount } = require("../modules/bank.module");
 const { getString, getCommandName } = require("../lang/index");
-const User = require("../database/entity/user.entitiy");
+const { debit, credit } = require("../modules/slot-wallet.module");
 const logger = require("../logger");
 const { addToPool, subtractFromPool } = require("../modules/pool.module");
 const { getOwnerSettings } = require("../modules/owner-settings.module");
@@ -110,7 +110,7 @@ const settleGame = async (ctx, gameKey, isTimeout = false) => {
     if (result === "PLAYER") {
       const payout = game.betAmount * 2;
       const profit = game.betAmount;
-      await User.findOneAndUpdate({ id: Number(game.userId) }, { $inc: { slot_wallet: payout } });
+      await credit(game.userId, payout);
       await subtractFromPool(profit);
       await decreaseBankAmount({ ctx, decreaseAmont: profit }).catch((error) => logger.error(`Bank decrease error: ${error.message}`));
       resultText = `👤 Player Win\nWin - ${money(profit)}`;
@@ -119,7 +119,7 @@ const settleGame = async (ctx, gameKey, isTimeout = false) => {
       await increaseBankAmount({ ctx, increaseAmount: game.betAmount }).catch((error) => logger.error(`Bank increase error: ${error.message}`));
       resultText = `🏦 Banker Win\nLose - ${money(game.betAmount)}`;
     } else {
-      await User.findOneAndUpdate({ id: Number(game.userId) }, { $inc: { slot_wallet: game.betAmount } });
+      await credit(game.userId, game.betAmount);
       resultText = `⚖️ Tie\nReturn - ${money(game.betAmount)}`;
     }
 
@@ -137,7 +137,7 @@ const settleGame = async (ctx, gameKey, isTimeout = false) => {
     });
   } catch (error) {
     logger.error(`Shan settlement error: ${error.stack || error.message}`);
-    await User.findOneAndUpdate({ id: Number(game.userId) }, { $inc: { slot_wallet: game.betAmount } }).catch(() => {});
+    await credit(game.userId, game.betAmount).catch(() => {});
     await ctx.telegram.sendMessage(game.chatId, "ဂိမ်း settlement အမှားဖြစ်သဖြင့် လောင်းကြေးကို ပြန်အမ်းထားပါသည်။").catch(() => {});
   }
 };
@@ -175,12 +175,8 @@ const shanHandler = async (ctx) => {
     if (betAmount < ownerSettings.minBet) return ctx.reply(`🔴 အနည်းဆုံး $${(ownerSettings.minBet / 100).toFixed(2)} လောင်းရပါမည်။`);
     if (betAmount > ownerSettings.maxBet) return ctx.reply(`🔴 အများဆုံး $${(ownerSettings.maxBet / 100).toFixed(2)} ထိသာ လောင်းနိုင်ပါသည်။`);
 
-    const user = await User.findOneAndUpdate(
-      { id: Number(userId), slot_wallet: { $gte: betAmount } },
-      { $inc: { slot_wallet: -betAmount } },
-      { new: true }
-    );
-    if (!user) return ctx.reply(getString("NO_BALANCE"));
+    const remainingBalance = await debit(userId, betAmount);
+    if (remainingBalance === null) return ctx.reply(getString("NO_BALANCE"));
     charged = true;
 
     const deck = createDeck();
@@ -225,7 +221,7 @@ const shanHandler = async (ctx) => {
   } catch (error) {
     logger.error(`Shan handler error: ${error.stack || error.message}`);
     activeGames.delete(gameKey);
-    if (charged) await User.findOneAndUpdate({ id: Number(userId) }, { $inc: { slot_wallet: betAmountFromContext(ctx) } }).catch(() => {});
+    if (charged) await credit(userId, betAmountFromContext(ctx)).catch(() => {});
     return ctx.reply(getString("DATABASE_LOCK")).catch(() => {});
   }
 };

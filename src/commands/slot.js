@@ -1,7 +1,7 @@
 const { Composer } = require("telegraf");
 const { increaseBankAmount } = require("../modules/bank.module");
 const { getString, getCommandName } = require("../lang/index");
-const User = require("../database/entity/user.entitiy");
+const { getBalance, debit, credit } = require("../modules/slot-wallet.module");
 const logger = require("../logger");
 const { getPoolBalance, addToPool, subtractFromPool } = require("../modules/pool.module");
 const { getOwnerSettings } = require("../modules/owner-settings.module");
@@ -168,13 +168,9 @@ const slotHandler = async (ctx) => {
     // Acknowledge immediately; database work happens after the fast Telegram reply.
     waitMsg = await ctx.reply("⚡️", { reply_to_message_id: ctx.message.message_id });
 
-    const user = await User.findOneAndUpdate(
-      { id: Number(userId), slot_wallet: { $gte: betAmount } },
-      { $inc: { slot_wallet: -betAmount } },
-      { new: true }
-    );
+    const remainingBalance = await debit(userId, betAmount);
 
-    if (!user) {
+    if (remainingBalance === null) {
       await ctx.telegram.editMessageText(
         ctx.chat.id,
         waitMsg.message_id,
@@ -299,11 +295,7 @@ const slotHandler = async (ctx) => {
     const profit    = winAmount - betAmount;
 
     if (winAmount > 0) {
-      const creditedUser = await User.findOneAndUpdate(
-        { id: Number(userId) },
-        { $inc: { slot_wallet: winAmount } }
-      );
-      if (!creditedUser) throw new Error("User win credit failed");
+      await credit(userId, winAmount);
       creditedWin = true;
       // Subtract profit from pool (since user won)
       if (profit > 0) {
@@ -335,10 +327,7 @@ const slotHandler = async (ctx) => {
 
     // Refund only when the bet was deducted but no user win was credited.
     if (debited && !creditedWin && !settled) {
-      await User.findOneAndUpdate(
-        { id: Number(userId) },
-        { $inc: { slot_wallet: betAmount } }
-      ).catch(refundErr => logger.error("Slot refund error: " + refundErr.message));
+      await credit(userId, betAmount).catch(refundErr => logger.error("Slot refund error: " + refundErr.message));
     }
 
     activeSpins.delete(userId);

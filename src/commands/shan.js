@@ -15,6 +15,9 @@ const VERY_LOW_POOL_THRESHOLD = 100000;
 const VERY_LOW_POOL_WIN = 5;
 const VERY_LOW_POOL_TIE = 35;
 const LOW_POOL_THRESHOLD = 200000;
+const HIGH_POOL_THRESHOLD = 400000;
+const HIGH_POOL_WIN = 40;
+const HIGH_POOL_TIE = 20;
 const LOW_POOL_WIN = 20;
 const LOW_POOL_TIE = 30;
 const LOW_POOL_LOSE = 50;
@@ -65,13 +68,26 @@ const compareHands = (left, right) => {
 const formatHand = (cards) => cards.map((card) => `${card.value}${card.suit}`).join(" ");
 const money = (cents) => `$${(cents / 100).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
-const getLowPoolTarget = (userId, poolBalance) => {
-  if (Number(poolBalance) >= LOW_POOL_THRESHOLD) return null;
-  const streak = shanLossStreak.get(String(userId)) || 0;
-  const isVeryLowPool = Number(poolBalance) < VERY_LOW_POOL_THRESHOLD;
-  const baseWinRate = isVeryLowPool ? VERY_LOW_POOL_WIN : LOW_POOL_WIN;
-  const tieRate = isVeryLowPool ? VERY_LOW_POOL_TIE : LOW_POOL_TIE;
-  const winRate = Math.min(100, baseWinRate + (streak >= LOSS_BOOST_AFTER ? LOSS_BOOST : 0));
+const getPoolTarget = (userId, poolBalance) => {
+  const balance = Number(poolBalance);
+  let winRate;
+  let tieRate;
+
+  if (balance >= HIGH_POOL_THRESHOLD) {
+    // $4,000+ pool: exact 40% Win / 20% Tie / 40% Lose band.
+    winRate = HIGH_POOL_WIN;
+    tieRate = HIGH_POOL_TIE;
+  } else if (balance < LOW_POOL_THRESHOLD) {
+    const streak = shanLossStreak.get(String(userId)) || 0;
+    const isVeryLowPool = balance < VERY_LOW_POOL_THRESHOLD;
+    const baseWinRate = isVeryLowPool ? VERY_LOW_POOL_WIN : LOW_POOL_WIN;
+    tieRate = isVeryLowPool ? VERY_LOW_POOL_TIE : LOW_POOL_TIE;
+    winRate = Math.min(100, baseWinRate + (streak >= LOSS_BOOST_AFTER ? LOSS_BOOST : 0));
+  } else {
+    // $2,000 to under $4,000: retain normal point-only card comparison.
+    return null;
+  }
+
   const roll = Math.random() * 100;
   if (roll < winRate) return "PLAYER";
   if (roll < winRate + tieRate) return "TIE";
@@ -208,7 +224,7 @@ const shanHandler = async (ctx) => {
     const playerHand = [deck.pop(), deck.pop()];
     const bankerHand = [deck.pop(), deck.pop()];
     const poolBalance = await getPoolBalance();
-    const targetResult = getLowPoolTarget(userId, poolBalance);
+    const targetResult = getPoolTarget(userId, poolBalance);
     const playerInfo = getHandInfo(playerHand);
 
     const gameMsg = `🃏 *SHAN KO MEE* 🃏\n` +

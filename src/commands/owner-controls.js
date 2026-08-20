@@ -12,6 +12,7 @@ const {
 const { isOwner } = require("../modules/owner.module");
 const { setMaintenanceEnabled } = require("../modules/maintenance.module");
 const { migrateSlotWalletsToWaifu } = require("../modules/slot-wallet-reset.module");
+const { clearAll } = require("../modules/slot-wallet.module");
 
 const composer = new Composer();
 
@@ -169,13 +170,19 @@ composer.command("reset", async (ctx) => {
       },
     });
 
+    if (summary.failedUsers === 0) {
+      await clearAll();
+    }
+
     await ctx.reply([
       "✅ Slot → Waifu migration ပြီးပါပြီ။",
       `User စုစုပေါင်း: ${summary.totalUsers}`,
       `အောင်မြင်: ${summary.migratedUsers}`,
       `မအောင်မြင်: ${summary.failedUsers}`,
       `ပြောင်းလဲငွေ စုစုပေါင်း: ${dollars(summary.totalCents)}`,
-      "🎰 Slot Wallet များကို $0 သို့ reset လုပ်ပြီးပါပြီ။",
+      summary.failedUsers === 0
+        ? "🎰 Slot Wallet အားလုံးကို $0 သို့ reset လုပ်ပြီးပါပြီ။"
+        : "⚠️ မအောင်မြင်သော user များ၏ Slot Wallet ကို မဖျက်သေးပါ။ ထပ်စစ်ပြီး reset ပြန်လုပ်ပါ။",
     ].join("\n"));
     logger.info(`Owner reset migrated ${summary.migratedUsers}/${summary.totalUsers} Slot wallets`);
   } catch (error) {

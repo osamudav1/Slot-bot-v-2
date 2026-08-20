@@ -12,7 +12,7 @@ const { isMaintenanceEnabled } = require("./modules/maintenance.module");
 const { isOwner } = require("./modules/owner.module");
 
 const User = require("./database/entity/user.entitiy");
-const { hydrateFromMongo } = require("./modules/slot-wallet.module");
+const { clearAll } = require("./modules/slot-wallet.module");
 
 const withTimeout = (promise, timeoutMs, label) => Promise.race([
   promise,
@@ -172,8 +172,9 @@ const main = async () => {
 
   try {
     await connectDB();
-    // Recover existing balances only when the local wallet file is missing; no default credit is assigned.
-    await hydrateFromMongo(User);
+    // A process restart must never restore stale or free Slot Wallet balances.
+    await clearAll();
+    logger.info("Slot Wallet cleared on bot startup");
     const bot = new Telegraf(process.env.TELEGRAM_BOT_TOKEN);
 
     bot.catch((error) => {

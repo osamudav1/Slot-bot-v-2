@@ -78,12 +78,15 @@ const debit = async (userId, cents) => runExclusive(async () => {
   return current - amount;
 });
 
-const hydrateFromMongo = async (User) => {
+const clearAll = async () => runExclusive(async () => {
   load();
-  if (fs.existsSync(WALLET_FILE) || wallets.size > 0) return;
-  const users = await User.find({ slot_wallet: { $gt: 0 } }).select({ id: 1, slot_wallet: 1 }).lean();
-  for (const user of users) wallets.set(String(user.id), normalizeCents(user.slot_wallet));
+  wallets.clear();
   await persist();
-};
+  return true;
+});
 
-module.exports = { getBalance, listBalances, setBalance, credit, debit, hydrateFromMongo, WALLET_FILE };
+// Kept for backwards compatibility. Slot Wallet balances are intentionally
+// never hydrated from MongoDB: restart must not restore stale/free balances.
+const hydrateFromMongo = async () => clearAll();
+
+module.exports = { getBalance, listBalances, setBalance, credit, debit, clearAll, hydrateFromMongo, WALLET_FILE };

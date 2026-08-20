@@ -18,8 +18,8 @@ const LOW_POOL_THRESHOLD = 200000;
 const LOW_POOL_WIN = 20;
 const LOW_POOL_TIE = 30;
 const LOW_POOL_LOSE = 50;
-const LOSS_BOOST_AFTER = 4;
-const LOSS_BOOST = 5;
+const LOSS_BOOST_AFTER = 3;
+const LOSS_BOOST = 15;
 
 const SUITS = ["♠️", "♥️", "♣️", "♦️"];
 const SUIT_STRENGTH = { "♣️": 1, "♥️": 2, "♦️": 3, "♠️": 4 };
@@ -71,7 +71,7 @@ const getLowPoolTarget = (userId, poolBalance) => {
   const isVeryLowPool = Number(poolBalance) < VERY_LOW_POOL_THRESHOLD;
   const baseWinRate = isVeryLowPool ? VERY_LOW_POOL_WIN : LOW_POOL_WIN;
   const tieRate = isVeryLowPool ? VERY_LOW_POOL_TIE : LOW_POOL_TIE;
-  const winRate = baseWinRate + (streak >= LOSS_BOOST_AFTER ? LOSS_BOOST : 0);
+  const winRate = Math.min(100, baseWinRate + (streak >= LOSS_BOOST_AFTER ? LOSS_BOOST : 0));
   const roll = Math.random() * 100;
   if (roll < winRate) return "PLAYER";
   if (roll < winRate + tieRate) return "TIE";

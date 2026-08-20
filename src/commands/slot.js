@@ -17,9 +17,9 @@ const DEFAULT_JACKPOT   = 0.1;  // 4-diamond jackpot %
 // Lose% is always derived: 100 - win - jackpot
 
 // Streak adjustment defaults
-const DEFAULT_BOOST     = 5;    // +5 Win% after 3+ consecutive losses
+const DEFAULT_BOOST     = 15;   // +15 Win% after 3 consecutive losses
 const DEFAULT_REDUCE    = 10;   // -Win% after 2+ consec. wins
-const DEFAULT_MAX_WIN   = 42;
+const DEFAULT_MAX_WIN   = 52;
 const DEFAULT_MIN_WIN   = 37;
 
 // Pool safety: below $5,000, reduce Win%; above it, recover gradually.
@@ -65,11 +65,11 @@ const getWLJ = (userId, poolBalance = POOL_RATE_RECOVERY_TARGET) => {
     return { W: LOW_POOL_NORMAL_WIN, L: 100, J: 0 };
   }
 
-  // Above $2,000, use 37% normally. After a loss, add +5% for the next
-  // round; a win records "W", so the boost disappears immediately.
+  // Above $2,000, use the normal rate. After exactly three consecutive
+  // losses, add the configured boost to the next round; a win resets it.
   let winRate = Math.min(cfg.maxWin, cfg.win);
-  const hasPreviousLoss = hist.length > 0 && hist[hist.length - 1] === "L";
-  if (hasPreviousLoss) winRate = Math.min(winRate + cfg.boost, cfg.maxWin);
+  const hasThreeLosses = hist.length >= 3 && hist.slice(-3).every((result) => result === "L");
+  if (hasThreeLosses) winRate = Math.min(winRate + cfg.boost, cfg.maxWin);
 
   const loseRate = Math.max(0, 100 - cfg.jackpot - winRate);
   return { W: winRate, L: loseRate, J: cfg.jackpot };
@@ -422,7 +422,7 @@ const wljHandler = async (ctx) => {
     `   💎   : ${cfg.jackpot}% (${MULTI_JACKPOT}x)`,
     ``,
     `🔄 Streak Adjustments`,
-    `   3+ consec. Lose → +${cfg.boost}% Win (ceil ${cfg.maxWin}%)`,
+    `   3 consec. Lose → +${cfg.boost}% Win (ceil ${cfg.maxWin}%)`,
     `   2+ consec. Win  → -${cfg.reduce}% Win (floor ${cfg.minWin}%)`,
     ``,
     `🏆 Payouts`,

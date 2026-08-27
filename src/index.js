@@ -57,6 +57,7 @@ const setBotCommands = async (bot) => {
   const userCommands = [
     { command: "start", description: "Bot စတင်ရန်" },
     { command: "wallet", description: "Wallet လက်ကျန်ကြည့်ရန်" },
+    { command: "pool", description: "Payout pool စစ်ရန်" },
     { command: "exchange", description: "Waifu နှင့် wallet လဲလှယ်ရန်" },
     { command: "slot", description: "Slot ဆော့ရန်" },
     { command: "shan", description: "ရှမ်းကိုးမီး ဆော့ရန်" },
@@ -72,7 +73,6 @@ const setBotCommands = async (bot) => {
     ...userCommands,
     { command: "help", description: "အကူအညီကြည့်ရန်" },
     { command: "ownerhelp", description: "Owner command အားလုံး" },
-    { command: "pool", description: "Payout pool စစ်ရန်" },
     { command: "addpool", description: "Payout pool ထည့်ရန်" },
     { command: "setwin", description: "Win rate သတ်မှတ်ရန်" },
     { command: "setlimit", description: "Bet limit သတ်မှတ်ရန်" },

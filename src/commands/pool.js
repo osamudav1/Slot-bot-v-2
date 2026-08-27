@@ -6,6 +6,17 @@ const { isOwner } = require("../modules/owner.module");
 
 const composer = new Composer();
 
+// Public command: all users may check the current payout pool balance.
+composer.command("pool", async (ctx) => {
+  try {
+    const pool = await getPoolBalance();
+    return ctx.reply(`📊 Current Payout Pool: $${(pool / 100).toFixed(2)}`);
+  } catch (err) {
+    logger.error("Pool status error: " + err.message);
+    return ctx.reply("❌ Pool status မရနိုင်ပါ။");
+  }
+});
+
 composer.command("addpool", async (ctx) => {
   if (!isOwner(ctx)) return;
 

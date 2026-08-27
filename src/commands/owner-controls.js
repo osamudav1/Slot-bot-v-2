@@ -46,24 +46,6 @@ composer.command("ownerhelp", async (ctx) => {
   ].join("\n"));
 });
 
-composer.command("pool", async (ctx) => {
-  if (!(await ownerOnly(ctx))) return;
-  try {
-    const [pool, settings] = await Promise.all([getPoolBalance(), getOwnerSettings()]);
-    return ctx.reply([
-      "📊 Pool Status",
-      `Current Pool: ${dollars(pool)}`,
-      `Win Rate: ${settings.winRate}%`,
-      `Bet Limit: ${dollars(settings.minBet)} - ${dollars(settings.maxBet)}`,
-      `Cooldown: ${(settings.cooldown / 1000).toFixed(1)}s`,
-      `Slot: ${settings.pauseSlot ? "PAUSED" : "ON"} | Shan: ${settings.pauseShan ? "PAUSED" : "ON"}`,
-    ].join("\n"));
-  } catch (error) {
-    logger.error(`Owner pool error: ${error.stack || error.message}`);
-    return ctx.reply("❌ Pool status မရနိုင်ပါ။");
-  }
-});
-
 composer.command("setwin", async (ctx) => {
   if (!(await ownerOnly(ctx))) return;
   const value = Number(ctx.message.text.trim().split(/\s+/)[1]);

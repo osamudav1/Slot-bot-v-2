@@ -192,7 +192,8 @@ const main = async () => {
       const currentUserIsOwner = isOwner(ctx);
       const commandText = String(ctx.message?.text || ctx.callbackQuery?.message?.text || "");
       const commandName = commandText.trim().split(/\s+/)[0].split("@")[0].toLowerCase();
-      const alwaysAllowedCommands = new Set(["/start", "/wallet", "/exchange"]);
+      // Read-only commands remain available during maintenance.
+      const alwaysAllowedCommands = new Set(["/start", "/wallet", "/exchange", "/pool"]);
 
       // Owner can always access the bot so maintenance can be switched off.
       // Do not let a stalled MongoDB query block Telegram updates indefinitely.
@@ -247,9 +248,10 @@ const main = async () => {
           return;
         }
         const text = ctx.message?.text || "";
-        const isRegisterCommand = text.startsWith("/register");
-        
-        if (!group || !group.isActive) {
+          const isRegisterCommand = text.startsWith("/register");
+          const isPoolCommand = text.trim().split(/\s+/)[0].split("@")[0].toLowerCase() === "/pool";
+          
+          if (!group || !group.isActive) {
           if (global.autoRegister === true) {
             try {
               group = await withTimeout(
@@ -270,7 +272,7 @@ const main = async () => {
           }
 
           // Manual mode: only the owner may register an unregistered group.
-          if (isRegisterCommand && currentUserIsOwner) {
+          if ((isRegisterCommand && currentUserIsOwner) || isPoolCommand) {
             return next();
           }
           if (ctx.chat?.type === "group" || ctx.chat?.type === "supergroup") {

@@ -73,7 +73,8 @@ const getTelegramSlotResult = (value) => {
     return result;
   }, {});
   const highestCount = Math.max(...Object.values(counts));
-  const multiplier = highestCount >= 3 ? MULTI_3KIND : highestCount >= 2 ? MULTI_2KIND : 0;
+  // No matching reels means a full loss: no payout and the bet remains lost.
+  const multiplier = highestCount === 3 ? MULTI_3KIND : highestCount === 2 ? MULTI_2KIND : 0;
   return {
     symbols,
     multiplier,

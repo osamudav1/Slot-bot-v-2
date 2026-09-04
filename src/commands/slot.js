@@ -46,8 +46,7 @@ const getCfg = () => ({
 // Payout multipliers
 const MULTI_2KIND    = 2;    // 2-of-a-kind → 2x
 const MULTI_3KIND    = 3;    // 3-of-a-kind → 3x
-const MULTI_4KIND    = 4;    // 4-of-a-kind (non-diamond) → 4x
-const MULTI_JACKPOT  = 5;    // 4 💎 → 5x
+const MULTI_JACKPOT  = 5;    // 777 → 5x
 
 // Per-user history (in-memory, last 5 spins)
 const userHistory = new Map(); // userId → ['W','L','W',...]
@@ -172,29 +171,32 @@ const slotHandler = async (ctx) => {
     lastSpinTime.set(userId, Date.now());
 
     const _usd = (cents) => `$${(cents / 100).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-    const getDesign = (s1, s2, s3, s4, bet = 0, win = 0, profit = 0, status = "") => {
-      const resultStatus = profit > 0 ? "Win ✅" : "Lose ❌";
+    const getDesign = (s1, s2, s3, bet = 0, win = 0, profit = 0, status = "") => {
+      const resultStatus = win > 0 ? "Win ✅" : "Lose ❌";
+      const resultLine = win > 0
+        ? `Win - ${_usd(win)} [${status}]`
+        : `Lose - ${_usd(bet)}`;
       return `🎰 GUESS SLOT V2.0
 ✦ ━━━━━━━━━━━ ✦
 
-┏━━━━━━━━━━━━━┓
-┃ ${s1} | ${s2} | ${s3} | ${s4} ┃
-┗━━━━━━━━━━━━━┛
+┏━━━━━━━━━━━┓
+┃ ${s1} | ${s2} | ${s3} ┃
+┗━━━━━━━━━━━┛
 
 ✦ ━━━━━━━━━━━ ✦
 🎰 SLOT DETAILS
 ✦ ━━━━━━━━━━━ ✦
 💵 Bet     : ${_usd(bet)}
-💰 Win     : ${_usd(win)}
+${resultLine}
 📊 Profit  : ${_usd(profit)} [${resultStatus}]
 ✦ ━━━━━━━━━━━ ✦`;
     };
 
-    const slots      = ["🍒", "🍎", "🍐", "🍉", "🍊", "🍌", "🍇", "🍓", "🫐", "🍈", "🍍", "🥭", "🍑", "🥝"];
-    const DIAMOND    = "💎";
+    const slots = ["🍒", "🍎", "🍉", "🍊", "🍋", "🍇", "🍓", "🥝", "🔔", "⭐"];
+    const SEVEN = "7️⃣";
     const makeLoseSymbols = () => {
       const shuffled = [...slots].sort(() => 0.5 - Math.random());
-      return shuffled.slice(0, 4);
+      return shuffled.slice(0, 3);
     };
 
     // ─── Determine outcome via WLJ ─────────────────────────────────────────
@@ -204,59 +206,44 @@ const slotHandler = async (ctx) => {
     const wlj    = getWLJ(userId, poolBalance);
     let random = Math.random() * 100;
 
-    let result1, result2, result3, result4;
+    let result1, result2, result3;
     let winMultiplier = 0;
     let status        = "Lose";
     let outcome       = "L";
 
 
     if (random < wlj.J) {
-      // ── JACKPOT: 4 diamonds → 5x ─────────────────────────────────────────
-      result1 = result2 = result3 = result4 = DIAMOND;
+      // ── JACKPOT: 777 → 5x ─────────────────────────────────────────────────
+      result1 = result2 = result3 = SEVEN;
       winMultiplier = MULTI_JACKPOT;
-      status  = `💎 Jackpot! (${MULTI_JACKPOT}x)`;
+      status = `${MULTI_JACKPOT}X`;
       outcome = "W";
 
     } else if (random < wlj.J + wlj.W) {
-      // ── WIN: pick sub-type ────────────────────────────────────────────────
+      // ── WIN: determine whether the emoji result is 3-kind or 2-kind ──────
       const winRoll = Math.random() * 100;
       outcome = "W";
 
-      if (winRoll < 10) {
-        // 4-of-a-kind (fruit) → 4x
-        const sym = slots[Math.floor(Math.random() * slots.length)];
-        result1 = result2 = result3 = result4 = sym;
-        winMultiplier = MULTI_4KIND;
-        status  = `🍀 4တန်းတူ! (${MULTI_4KIND}x)`;
-
-      } else if (winRoll < 40) {
-        // 3-of-a-kind → 3x
+      if (winRoll < 40) {
         const sym = slots[Math.floor(Math.random() * slots.length)];
         result1 = result2 = result3 = sym;
-        let other;
-        do { other = slots[Math.floor(Math.random() * slots.length)]; } while (other === sym);
-        result4 = other;
         winMultiplier = MULTI_3KIND;
-        status  = `🎯 3တန်းတူ! (${MULTI_3KIND}x)`;
-
+        status = `${MULTI_3KIND}X`;
       } else {
-        // 2-of-a-kind → 2x  (most common win)
         const sym = slots[Math.floor(Math.random() * slots.length)];
         result1 = result2 = sym;
-        let o1, o2;
-        do { o1 = slots[Math.floor(Math.random() * slots.length)]; } while (o1 === sym);
-        do { o2 = slots[Math.floor(Math.random() * slots.length)]; } while (o2 === sym || o2 === o1);
-        result3 = o1;
-        result4  = o2;
+        let other;
+        do { other = slots[Math.floor(Math.random() * slots.length)]; } while (other === sym);
+        result3 = other;
         winMultiplier = MULTI_2KIND;
-        status  = `✌️ 2တန်းတူ! (${MULTI_2KIND}x)`;
+        status = `${MULTI_2KIND}X`;
       }
 
     } else {
-      // ── LOSE ──────────────────────────────────────────────────────────────
-      [result1, result2, result3, result4] = makeLoseSymbols();
+      // ── LOSE: three different emoji symbols ───────────────────────────────
+      [result1, result2, result3] = makeLoseSymbols();
       winMultiplier = 0;
-      status  = "Lose ❌";
+      status = "Lose";
       outcome = "L";
     }
 
@@ -268,7 +255,7 @@ const slotHandler = async (ctx) => {
       (potentialProfit > 0 && poolBalance - potentialProfit < POOL_SAFETY_THRESHOLD)
     );
     if (reserveBreach && outcome === "W") {
-      [result1, result2, result3, result4] = makeLoseSymbols();
+      [result1, result2, result3] = makeLoseSymbols();
       winMultiplier = 0;
       status = "Lose ❌";
       outcome = "L";
@@ -303,7 +290,7 @@ const slotHandler = async (ctx) => {
         ctx.chat.id,
         waitMsg.message_id,
         null,
-        getDesign(result1, result2, result3, result4, betAmount, winAmount, profit, status)
+        getDesign(result1, result2, result3, betAmount, winAmount, profit, status)
       ).catch(err => logger.error("Edit result error: " + err.message));
     } finally {
       activeSpins.delete(userId);
@@ -419,7 +406,7 @@ const wljHandler = async (ctx) => {
     `   Pool safety: below $${(POOL_SAFETY_THRESHOLD / 100).toFixed(0)} scales Win% toward ${POOL_SAFETY_MIN_WIN}%`,
     `   Recovery: Win% rises gradually until $${(POOL_RATE_RECOVERY_TARGET / 100).toFixed(0)} pool`,
     `   Lose : ${lose}%`,
-    `   💎   : ${cfg.jackpot}% (${MULTI_JACKPOT}x)`,
+    `   777  : ${cfg.jackpot}% (${MULTI_JACKPOT}x)`,
     ``,
     `🔄 Streak Adjustments`,
     `   3 consec. Lose → +${cfg.boost}% Win (ceil ${cfg.maxWin}%)`,
@@ -428,14 +415,13 @@ const wljHandler = async (ctx) => {
     `🏆 Payouts`,
     `   2-of-a-kind : ${MULTI_2KIND}x`,
     `   3-of-a-kind : ${MULTI_3KIND}x`,
-    `   4-of-a-kind : ${MULTI_4KIND}x`,
-    `   4 💎        : ${MULTI_JACKPOT}x`,
+    `   777         : ${MULTI_JACKPOT}x`,
     ``,
     `👥 Tracked users: ${userHistory.size}`,
     ``,
     `📝 Commands`,
     `   /wlj win <num>      — Win base %`,
-    `   /wlj jackpot <num>  — 💎 chance %`,
+    `   /wlj jackpot <num>  — 777 chance %`,
     `   /wlj boost <num>    — streak loss boost`,
     `   /wlj reduce <num>   — streak win reduce`,
     `   /wlj maxwin <num>   — max Win% ceiling`,

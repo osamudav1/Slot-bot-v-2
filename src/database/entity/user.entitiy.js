@@ -21,6 +21,15 @@ const userSchema = new mongoose.Schema({
     type: String,
     default: null,
   },
+  slot_spin_day: {
+    type: String,
+    default: null,
+  },
+  slot_spin_count: {
+    type: Number,
+    default: 0,
+    min: 0,
+  },
   last_payback_time: {
     type: Number,
     default: 0,

@@ -1,7 +1,11 @@
 const { Composer } = require("telegraf");
 const { getUser } = require("../modules/user.module");
 const { getCommandName } = require("../lang/index");
-const { getBalance } = require("../modules/slot-wallet.module");
+const {
+  getBalance,
+  getDailySpinCount,
+  DAILY_SPIN_LIMIT,
+} = require("../modules/slot-wallet.module");
 
 const getBadge = (balance) => {
   if (balance <= 25000) return "🐣 Beginner";
@@ -19,6 +23,7 @@ const getBadge = (balance) => {
 const walletHandler = async (ctx) => {
   await getUser({ id: ctx.from.id, firstName: ctx.from.first_name });
   const balance = await getBalance(ctx.from.id);
+  const todaySpinCount = await getDailySpinCount(ctx.from.id);
   const badge = getBadge(balance);
   const firstName = ctx.from.first_name;
   const formatBalance = (amount) => (amount / 100).toLocaleString(undefined, {
@@ -27,6 +32,7 @@ const walletHandler = async (ctx) => {
   });
   const response = `🏦『 ${firstName} ᴡᴀʟʟᴇᴛ 』\n` +
     `🎰 Balance ⇢ $${formatBalance(balance)}\n` +
+    `🎲 Today spin ⇢ ${todaySpinCount}/${DAILY_SPIN_LIMIT}\n` +
     `💎 Rank ⇢ ${badge}`;
   try {
     const photos = await ctx.telegram.getUserProfilePhotos(ctx.from.id, 0, 1);

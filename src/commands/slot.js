@@ -1,7 +1,14 @@
 const { Composer } = require("telegraf");
 const { increaseBankAmount } = require("../modules/bank.module");
 const { getString, getCommandName } = require("../lang/index");
-const { getBalance, debit, credit } = require("../modules/slot-wallet.module");
+const {
+  getBalance,
+  debit,
+  credit,
+  reserveDailySpin,
+  releaseDailySpin,
+  DAILY_SPIN_LIMIT,
+} = require("../modules/slot-wallet.module");
 const logger = require("../logger");
 const { getPoolBalance, addToPool, subtractFromPool } = require("../modules/pool.module");
 const { getOwnerSettings } = require("../modules/owner-settings.module");
@@ -139,6 +146,7 @@ const slotHandler = async (ctx) => {
   let debited = false;
   let creditedWin = false;
   let settled = false;
+  let dailySpinReserved = false;
   try {
     const text = ctx.message.text || "";
 
@@ -181,6 +189,13 @@ const slotHandler = async (ctx) => {
 
     // Reserve this user before any async work so duplicate spins cannot overlap.
     activeSpins.add(userId);
+    const dailySpinCount = await reserveDailySpin(userId);
+    if (dailySpinCount === null) {
+      activeSpins.delete(userId);
+      return ctx.reply(`⛔ ဒီနေ့ spin အကြိမ် ${DAILY_SPIN_LIMIT} ပြည့်သွားပါပြီ။ မနက်ဖြန်မှ ပြန်လှည့်နိုင်ပါမယ်။`)
+        .catch(() => {});
+    }
+    dailySpinReserved = true;
 
     // Send Telegram's native animated slot as a reply to the bet command.
     // The returned dice.value is the source of truth for the displayed result.
@@ -198,6 +213,8 @@ const slotHandler = async (ctx) => {
         null,
         getString("NO_BALANCE")
       ).catch(err => logger.error("Balance message error: " + err.message));
+      await releaseDailySpin(userId).catch(err => logger.error("Daily spin rollback error: " + err.message));
+      dailySpinReserved = false;
       activeSpins.delete(userId);
       return;
     }
@@ -280,8 +297,11 @@ ${resultLine}
     if (debited && !creditedWin && !settled) {
       await credit(userId, betAmount).catch(refundErr => logger.error("Slot refund error: " + refundErr.message));
     }
-
+    if (dailySpinReserved && !settled) {
+      await releaseDailySpin(userId).catch(rollbackErr => logger.error("Daily spin rollback error: " + rollbackErr.message));
+    }
     activeSpins.delete(userId);
+
     if (waitMsg) {
       return ctx.telegram.editMessageText(
         ctx.chat.id,

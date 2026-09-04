@@ -3,10 +3,63 @@ const path = require("path");
 const User = require("../database/entity/user.entitiy");
 const LEGACY_WALLET_FILE = path.join(__dirname, "../../slot_wallet.json");
 const LEGACY_MIGRATION_ID = "slot-wallet-mongodb-v1";
+const DAILY_SPIN_LIMIT = 50;
+const MYANMAR_TIME_ZONE = "Asia/Yangon";
+const getMyanmarDateKey = (date = new Date()) => new Intl.DateTimeFormat("en-CA", {
+  timeZone: MYANMAR_TIME_ZONE,
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+}).format(date);
 
 const normalizeCents = (value) => {
   const cents = Number(value);
   return Number.isSafeInteger(cents) && cents >= 0 ? cents : 0;
+};
+
+const reserveDailySpin = async (userId) => {
+  const today = getMyanmarDateKey();
+  const updated = await User.findOneAndUpdate(
+    {
+      id: Number(userId),
+      $or: [
+        { slot_spin_day: { $ne: today } },
+        { slot_spin_count: { $lt: DAILY_SPIN_LIMIT } },
+      ],
+    },
+    [
+      {
+        $set: {
+          slot_spin_count: {
+            $cond: [
+              { $eq: [{ $ifNull: ["$slot_spin_day", ""] }, today] },
+              { $add: [{ $ifNull: ["$slot_spin_count", 0] }, 1] },
+              1,
+            ],
+          },
+          slot_spin_day: today,
+        },
+      },
+    ],
+    { new: true },
+  ).select({ slot_spin_count: 1, slot_spin_day: 1 }).lean();
+  return updated ? Number(updated.slot_spin_count || 0) : null;
+};
+const releaseDailySpin = async (userId) => {
+  const today = getMyanmarDateKey();
+  const updated = await User.findOneAndUpdate(
+    { id: Number(userId), slot_spin_day: today, slot_spin_count: { $gt: 0 } },
+    { $inc: { slot_spin_count: -1 } },
+    { new: true },
+  ).select({ slot_spin_count: 1 }).lean();
+  return updated ? Number(updated.slot_spin_count || 0) : null;
+};
+const getDailySpinCount = async (userId) => {
+  const today = getMyanmarDateKey();
+  const user = await User.findOne({ id: Number(userId) })
+    .select({ slot_spin_day: 1, slot_spin_count: 1 })
+    .lean();
+  return user?.slot_spin_day === today ? Math.max(0, Number(user.slot_spin_count || 0)) : 0;
 };
 
 const getBalance = async (userId) => {
@@ -94,4 +147,8 @@ module.exports = {
   clearAll,
   hydrateFromMongo,
   migrateLegacyWallet,
+  reserveDailySpin,
+  releaseDailySpin,
+  getDailySpinCount,
+  DAILY_SPIN_LIMIT,
 };

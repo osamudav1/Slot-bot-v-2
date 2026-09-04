@@ -10,9 +10,7 @@ const {
 } = require("../modules/owner-settings.module");
 
 const { isOwner } = require("../modules/owner.module");
-const { setMaintenanceEnabled } = require("../modules/maintenance.module");
-const { migrateSlotWalletsToWaifu } = require("../modules/slot-wallet-reset.module");
-const { clearAll, getBalance, credit, debit } = require("../modules/slot-wallet.module");
+const { getBalance, credit, debit } = require("../modules/slot-wallet.module");
 
 const composer = new Composer();
 
@@ -37,11 +35,11 @@ composer.command("ownerhelp", async (ctx) => {
     "/setcooldown <seconds> — cooldown",
     "/pausegame <slot|shan|all> <on|off>",
     "/user <id> — user balance ကြည့်ရန်",
-    "/adjust <id> <amount$> — Waifu balance ပြင်ရန်",
+    "/adjust <id> <amount$> — Slot wallet ပြင်ရန်",
     "Reply +amount / -amount — Slot wallet ပြင်ရန် (owner only)",
     "/stats — bot/game statistics",
     "/resetcontrol — owner settings reset",
-    "/reset — maintenance + Slot wallet ကို user တစ်ယောက်ချင်း Waifu ထဲပြန်လွှဲရန်",
+    "/reset — မသုံးရန် (Slot wallet data မဖျက်ပါ)",
     "/maintenance on|off — maintenance mode",
     "/addpool <amount$> — payout pool ထည့်ရန်",
   ].join("\n"));
@@ -99,7 +97,7 @@ composer.command("user", async (ctx) => {
   if (!Number.isFinite(id)) return usage(ctx, "/user <telegram_id>");
   const user = await User.findOne({ id }).lean();
   if (!user) return ctx.reply("❌ User not found.");
-  return ctx.reply(`👤 User: ${user.first_name || "User"}\nID: ${user.id}\nBalance: ${dollars(user.coins)}`);
+  return ctx.reply(`👤 User: ${user.first_name || "User"}\nID: ${user.id}\nSlot Balance: ${dollars(await getBalance(id))}`);
 });
 
 composer.command("adjust", async (ctx) => {
@@ -110,11 +108,12 @@ composer.command("adjust", async (ctx) => {
   const amount = Number(args[amountIndex]);
   const cents = Math.round(amount * 100);
   if (!Number.isFinite(id) || !Number.isFinite(cents) || cents === 0) return usage(ctx, "/adjust <telegram_id> <amount_dollars>");
-  const filter = cents < 0 ? { id, coins: { $gte: Math.abs(cents) } } : { id };
-  const user = await User.findOneAndUpdate(filter, { $inc: { coins: cents } }, { new: true });
-  if (!user) return ctx.reply(cents < 0 ? "❌ User not found or balance is too low." : "❌ User not found.");
-  logger.info(`Owner adjusted user ${id} by ${cents} cents`);
-  return ctx.reply(`✅ New balance for ${id}: ${dollars(user.coins)}`);
+  const balance = cents > 0
+    ? await credit(id, cents)
+    : await debit(id, Math.abs(cents));
+  if (balance === null) return ctx.reply("❌ User not found or Slot balance is too low.");
+  logger.info(`Owner adjusted Slot wallet ${id} by ${cents} cents`);
+  return ctx.reply(`✅ New Slot balance for ${id}: ${dollars(balance)}`);
 });
 
 // Owner-only quick Slot wallet adjustment. Reply to any user's message and send
@@ -142,7 +141,7 @@ composer.on("message", async (ctx, next) => {
       : await debit(targetId, cents);
 
     if (balance === null) {
-      return ctx.reply(`❌ Slot wallet လက်ကျန် မလုံလောက်ပါ။\nလက်ကျန်: ${dollars(getBalance(targetId))}`);
+      return ctx.reply(`❌ Slot wallet လက်ကျန် မလုံလောက်ပါ။\nလက်ကျန်: ${dollars(await getBalance(targetId))}`);
     }
 
     logger.info(`Owner adjusted Slot wallet ${targetId} by ${signedAmount} cents`);
@@ -162,14 +161,14 @@ composer.command("stats", async (ctx) => {
   if (!(await ownerOnly(ctx))) return;
   const [users, balance, settings, pool] = await Promise.all([
     User.countDocuments(),
-    User.aggregate([{ $group: { _id: null, total: { $sum: "$coins" } } }]),
+    User.aggregate([{ $group: { _id: null, total: { $sum: "$slot_wallet" } } }]),
     getOwnerSettings(),
     getPoolBalance(),
   ]);
   return ctx.reply([
     "📈 Bot Stats",
     `Users: ${users}`,
-    `User Balances: ${dollars(balance[0]?.total || 0)}`,
+    `Slot Wallet Balances: ${dollars(balance[0]?.total || 0)}`,
     `Payout Pool: ${dollars(pool)}`,
     `Win Rate: ${settings.winRate}%`,
     `Paused: slot=${settings.pauseSlot ? "yes" : "no"}, shan=${settings.pauseShan ? "yes" : "no"}`,
@@ -177,42 +176,8 @@ composer.command("stats", async (ctx) => {
 });
 
 composer.command("reset", async (ctx) => {
-  if (!(await ownerOnly(ctx)) || ctx.chat?.type !== "private") return;
-  await setMaintenanceEnabled(true);
-  await ctx.reply("🛠 Maintenance ON. User Slot Wallet များကို ၅ ယောက်စီ Waifu Wallet ထဲ ပြန်လွှဲနေပါသည်...");
-
-  try {
-    const summary = await migrateSlotWalletsToWaifu({
-      onBatch: async ({ batchNumber, completed, total, results }) => {
-        const moved = results.filter((item) => ["migrated", "already_migrated"].includes(item.status));
-        const failed = results.filter((item) => item.status === "failed");
-        await ctx.reply([
-          `✅ Batch #${batchNumber} ပြီးပါပြီ (${completed}/${total})`,
-          `ပြောင်းပြီးငွေ: ${dollars(moved.reduce((sum, item) => sum + item.cents, 0))}`,
-          failed.length ? `မအောင်မြင်: ${failed.map((item) => item.userId).join(", ")}` : "မအောင်မြင်သူ: 0",
-        ].join("\n"));
-      },
-    });
-
-    if (summary.failedUsers === 0) {
-      await clearAll();
-    }
-
-    await ctx.reply([
-      "✅ Slot → Waifu migration ပြီးပါပြီ။",
-      `User စုစုပေါင်း: ${summary.totalUsers}`,
-      `အောင်မြင်: ${summary.migratedUsers}`,
-      `မအောင်မြင်: ${summary.failedUsers}`,
-      `ပြောင်းလဲငွေ စုစုပေါင်း: ${dollars(summary.totalCents)}`,
-      summary.failedUsers === 0
-        ? "🎰 Slot Wallet အားလုံးကို $0 သို့ reset လုပ်ပြီးပါပြီ။"
-        : "⚠️ မအောင်မြင်သော user များ၏ Slot Wallet ကို မဖျက်သေးပါ။ ထပ်စစ်ပြီး reset ပြန်လုပ်ပါ။",
-    ].join("\n"));
-    logger.info(`Owner reset migrated ${summary.migratedUsers}/${summary.totalUsers} Slot wallets`);
-  } catch (error) {
-    logger.error(`Owner reset migration failed: ${error.stack || error.message}`);
-    await ctx.reply("❌ Migration မအောင်မြင်ပါ။ Maintenance ဆက် ON ထားပြီး ထပ်စစ်ရန်လိုပါသည်။");
-  }
+  if (!(await ownerOnly(ctx))) return;
+  return ctx.reply("ℹ️ MongoDB Slot Wallet ကို restart/reset လုပ်လည်း data မပျောက်ပါ။ Waifu migration/reset ကို ပိတ်ထားပါသည်။");
 });
 
 composer.command("resetcontrol", async (ctx) => {

@@ -10,9 +10,9 @@ const { getGroup, createGroupRequest, getTotalGroups, registerGroup } = require(
 const { getUser } = require("./modules/user.module");
 const { isMaintenanceEnabled } = require("./modules/maintenance.module");
 const { isOwner } = require("./modules/owner.module");
+const { migrateLegacyWallet } = require("./modules/slot-wallet.module");
 
 const User = require("./database/entity/user.entitiy");
-const { clearAll } = require("./modules/slot-wallet.module");
 
 const withTimeout = (promise, timeoutMs, label) => Promise.race([
   promise,
@@ -181,9 +181,9 @@ const main = async () => {
 
   try {
     await connectDB();
-    // A process restart must never restore stale or free Slot Wallet balances.
-    await clearAll();
-    logger.info("Slot Wallet cleared on bot startup");
+    // Slot Wallet balances are persisted in MongoDB and must survive restarts.
+    const migration = await migrateLegacyWallet();
+    logger.info(`MongoDB-backed Slot Wallet persistence enabled (migrated: ${migration.migrated}, skipped: ${migration.skipped})`);
     const bot = new Telegraf(botToken);
 
     bot.catch((error) => {

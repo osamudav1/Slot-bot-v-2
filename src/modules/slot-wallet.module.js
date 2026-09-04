@@ -1,92 +1,97 @@
 const fs = require("fs");
 const path = require("path");
-
-const WALLET_FILE = path.join(__dirname, "../../slot_wallet.json");
-const wallets = new Map();
-let loaded = false;
-let writeQueue = Promise.resolve();
-let operationQueue = Promise.resolve();
+const User = require("../database/entity/user.entitiy");
+const LEGACY_WALLET_FILE = path.join(__dirname, "../../slot_wallet.json");
+const LEGACY_MIGRATION_ID = "slot-wallet-mongodb-v1";
 
 const normalizeCents = (value) => {
   const cents = Number(value);
   return Number.isSafeInteger(cents) && cents >= 0 ? cents : 0;
 };
 
-const load = () => {
-  if (loaded) return;
-  loaded = true;
-  try {
-    if (!fs.existsSync(WALLET_FILE)) return;
-    const raw = JSON.parse(fs.readFileSync(WALLET_FILE, "utf8"));
-    for (const [id, amount] of Object.entries(raw || {})) {
-      wallets.set(String(id), normalizeCents(amount));
-    }
-  } catch (error) {
-    console.error("Slot Wallet load error:", error.message);
-  }
+const getBalance = async (userId) => {
+  const user = await User.findOne({ id: Number(userId) }).select({ slot_wallet: 1 }).lean();
+  return normalizeCents(user?.slot_wallet);
 };
 
-const persist = () => {
-  const snapshot = Object.fromEntries(wallets);
-  writeQueue = writeQueue
-    .then(async () => {
-      const tempFile = `${WALLET_FILE}.tmp`;
-      await fs.promises.writeFile(tempFile, JSON.stringify(snapshot, null, 2), "utf8");
-      await fs.promises.rename(tempFile, WALLET_FILE);
-    })
-    .catch((error) => console.error("Slot Wallet save error:", error.message));
-  return writeQueue;
+const listBalances = async () => {
+  const users = await User.find({}).select({ id: 1, slot_wallet: 1 }).lean();
+  return users.map((user) => ({ userId: String(user.id), cents: normalizeCents(user.slot_wallet) }));
 };
 
-const getBalance = (userId) => {
-  load();
-  return wallets.get(String(userId)) || 0;
+const setBalance = async (userId, cents) => {
+  const updated = await User.findOneAndUpdate(
+    { id: Number(userId) },
+    { $set: { slot_wallet: normalizeCents(cents) } },
+    { new: true, upsert: true, setDefaultsOnInsert: true },
+  ).select({ slot_wallet: 1 }).lean();
+  return normalizeCents(updated?.slot_wallet);
 };
 
-const listBalances = () => {
-  load();
-  return Array.from(wallets.entries()).map(([userId, cents]) => ({ userId, cents }));
+const credit = async (userId, cents) => {
+  const updated = await User.findOneAndUpdate(
+    { id: Number(userId) },
+    { $inc: { slot_wallet: normalizeCents(cents) } },
+    { new: true, upsert: true, setDefaultsOnInsert: true },
+  ).select({ slot_wallet: 1 }).lean();
+  return normalizeCents(updated?.slot_wallet);
 };
 
-const runExclusive = (operation) => {
-  const result = operationQueue.then(operation, operation);
-  operationQueue = result.catch(() => {});
-  return result;
-};
-
-const setBalance = async (userId, cents) => runExclusive(async () => {
-  load();
-  wallets.set(String(userId), normalizeCents(cents));
-  await persist();
-  return getBalance(userId);
-});
-
-const credit = async (userId, cents) => runExclusive(async () => {
-  load();
-  wallets.set(String(userId), getBalance(userId) + normalizeCents(cents));
-  await persist();
-  return getBalance(userId);
-});
-
-const debit = async (userId, cents) => runExclusive(async () => {
-  load();
+const debit = async (userId, cents) => {
   const amount = normalizeCents(cents);
-  const current = getBalance(userId);
-  if (current < amount) return null;
-  wallets.set(String(userId), current - amount);
-  await persist();
-  return current - amount;
-});
+  const updated = await User.findOneAndUpdate(
+    { id: Number(userId), slot_wallet: { $gte: amount } },
+    { $inc: { slot_wallet: -amount } },
+    { new: true },
+  ).select({ slot_wallet: 1 }).lean();
+  return updated ? normalizeCents(updated.slot_wallet) : null;
+};
 
-const clearAll = async () => runExclusive(async () => {
-  load();
-  wallets.clear();
-  await persist();
-  return true;
-});
+const migrateLegacyWallet = async () => {
+  if (!fs.existsSync(LEGACY_WALLET_FILE)) return { migrated: 0, skipped: 0 };
+  let raw;
+  try {
+    raw = JSON.parse(await fs.promises.readFile(LEGACY_WALLET_FILE, "utf8"));
+  } catch (error) {
+    throw new Error(`Legacy Slot wallet migration read failed: ${error.message}`);
+  }
 
-// Kept for backwards compatibility. Slot Wallet balances are intentionally
-// never hydrated from MongoDB: restart must not restore stale/free balances.
-const hydrateFromMongo = async () => clearAll();
+  let migrated = 0;
+  let skipped = 0;
+  for (const [userId, amount] of Object.entries(raw || {})) {
+    const id = Number(userId);
+    if (!Number.isSafeInteger(id) || id <= 0) {
+      skipped += 1;
+      continue;
+    }
+    const result = await User.updateOne(
+      { id, slot_wallet_migration_id: { $ne: LEGACY_MIGRATION_ID } },
+      {
+        $set: {
+          slot_wallet: normalizeCents(amount),
+          slot_wallet_migration_id: LEGACY_MIGRATION_ID,
+        },
+        $setOnInsert: { id },
+      },
+      { upsert: true },
+    );
+    if (result.modifiedCount || result.upsertedCount) migrated += 1;
+    else skipped += 1;
+  }
+  return { migrated, skipped };
+};
 
-module.exports = { getBalance, listBalances, setBalance, credit, debit, clearAll, hydrateFromMongo, WALLET_FILE };
+// Kept for compatibility with older imports. Startup must never clear balances.
+const clearAll = async () => true;
+const hydrateFromMongo = async () => true;
+
+module.exports = {
+  getBalance,
+  listBalances,
+  setBalance,
+  credit,
+  debit,
+  clearAll,
+  hydrateFromMongo,
+  migrateLegacyWallet,
+};

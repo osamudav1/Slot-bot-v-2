@@ -12,7 +12,7 @@ const {
 const { isOwner } = require("../modules/owner.module");
 const { setMaintenanceEnabled } = require("../modules/maintenance.module");
 const { migrateSlotWalletsToWaifu } = require("../modules/slot-wallet-reset.module");
-const { clearAll } = require("../modules/slot-wallet.module");
+const { clearAll, getBalance, credit, debit } = require("../modules/slot-wallet.module");
 
 const composer = new Composer();
 
@@ -37,7 +37,8 @@ composer.command("ownerhelp", async (ctx) => {
     "/setcooldown <seconds> — cooldown",
     "/pausegame <slot|shan|all> <on|off>",
     "/user <id> — user balance ကြည့်ရန်",
-    "/adjust <id> <amount$> — balance ပြင်ရန်",
+    "/adjust <id> <amount$> — Waifu balance ပြင်ရန်",
+    "Reply +amount / -amount — Slot wallet ပြင်ရန် (owner only)",
     "/stats — bot/game statistics",
     "/resetcontrol — owner settings reset",
     "/reset — maintenance + Slot wallet ကို user တစ်ယောက်ချင်း Waifu ထဲပြန်လွှဲရန်",
@@ -114,6 +115,47 @@ composer.command("adjust", async (ctx) => {
   if (!user) return ctx.reply(cents < 0 ? "❌ User not found or balance is too low." : "❌ User not found.");
   logger.info(`Owner adjusted user ${id} by ${cents} cents`);
   return ctx.reply(`✅ New balance for ${id}: ${dollars(user.coins)}`);
+});
+
+// Owner-only quick Slot wallet adjustment. Reply to any user's message and send
+// +amount or -amount, for example +10 or -5. The owner can also reply to their
+// own message to adjust their own Slot wallet.
+composer.on("message", async (ctx, next) => {
+  if (!isOwner(ctx)) return next();
+
+  const repliedMessage = ctx.message?.reply_to_message;
+  const rawText = String(ctx.message?.text || "").trim();
+  const match = rawText.match(/^([+-])\s*(\d+(?:\.\d{1,2})?)$/);
+  if (!repliedMessage || !match) return next();
+
+  const targetId = Number(repliedMessage.from?.id);
+  const amountDollars = Number(match[2]);
+  const cents = Math.round(amountDollars * 100);
+  if (!Number.isSafeInteger(targetId) || targetId <= 0 || !Number.isSafeInteger(cents) || cents <= 0) {
+    return ctx.reply("❌ Amount မမှန်ပါ။ ဥပမာ +10 သို့မဟုတ် -5");
+  }
+
+  try {
+    const signedAmount = match[1] === "+" ? cents : -cents;
+    const balance = signedAmount > 0
+      ? await credit(targetId, signedAmount)
+      : await debit(targetId, cents);
+
+    if (balance === null) {
+      return ctx.reply(`❌ Slot wallet လက်ကျန် မလုံလောက်ပါ။\nလက်ကျန်: ${dollars(getBalance(targetId))}`);
+    }
+
+    logger.info(`Owner adjusted Slot wallet ${targetId} by ${signedAmount} cents`);
+    return ctx.reply(
+      `✅ Slot wallet ပြင်ပြီးပါပြီ။\n` +
+      `User ID: ${targetId}\n` +
+      `ပြောင်းလဲမှု: ${signedAmount > 0 ? "+" : "-"}${dollars(cents)}\n` +
+      `လက်ကျန်: ${dollars(balance)}`,
+    );
+  } catch (error) {
+    logger.error(`Owner Slot wallet adjustment error: ${error.message}`);
+    return ctx.reply("❌ Slot wallet ပြင်ရာတွင် အမှားဖြစ်ပါသည်။");
+  }
 });
 
 composer.command("stats", async (ctx) => {

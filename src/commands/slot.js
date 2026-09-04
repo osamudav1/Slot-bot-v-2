@@ -52,6 +52,34 @@ const MULTI_JACKPOT  = 5;    // 777 → 5x
 const userHistory = new Map(); // userId → ['W','L','W',...]
 const recoveryState = new Map(); // userId → { attempts: number, exhausted: boolean }
 const HISTORY_SIZE = 5;
+const SLOT_SYMBOLS = ["🍒", "🍋", "🔔", "⭐"];
+const escapeHtml = (value) => String(value ?? "")
+  .replace(/&/g, "&amp;")
+  .replace(/</g, "&lt;")
+  .replace(/>/g, "&gt;")
+  .replace(/"/g, "&quot;");
+
+// Telegram's 🎰 value is made from three 2-bit reel values. Value 64 is 777.
+const getTelegramSlotResult = (value) => {
+  const numericValue = Number(value);
+  if (numericValue === 64) {
+    return { symbols: ["7️⃣", "7️⃣", "7️⃣"], multiplier: MULTI_JACKPOT, status: `${MULTI_JACKPOT}X` };
+  }
+
+  const map = [1, 2, 3, 0];
+  const symbols = [0, 2, 4].map((shift) => SLOT_SYMBOLS[map[(numericValue - 1 >> shift) & 3]]);
+  const counts = symbols.reduce((result, symbol) => {
+    result[symbol] = (result[symbol] || 0) + 1;
+    return result;
+  }, {});
+  const highestCount = Math.max(...Object.values(counts));
+  const multiplier = highestCount >= 3 ? MULTI_3KIND : highestCount >= 2 ? MULTI_2KIND : 0;
+  return {
+    symbols,
+    multiplier,
+    status: multiplier > 0 ? `${multiplier}X` : "Lose",
+  };
+};
 
 // ─── WLJ RATE CALCULATOR ─────────────────────────────────────────────────────
 const getWLJ = (userId, poolBalance = POOL_RATE_RECOVERY_TARGET) => {
@@ -151,8 +179,12 @@ const slotHandler = async (ctx) => {
     // Reserve this user before any async work so duplicate spins cannot overlap.
     activeSpins.add(userId);
 
-    // Acknowledge immediately; database work happens after the fast Telegram reply.
-    waitMsg = await ctx.reply("⚡️", { reply_to_message_id: ctx.message.message_id });
+    // Send Telegram's native animated slot as a reply to the bet command.
+    // The returned dice.value is the source of truth for the displayed result.
+    waitMsg = await ctx.telegram.sendDice(ctx.chat.id, {
+      emoji: "🎰",
+      reply_to_message_id: ctx.message.message_id,
+    });
 
     const remainingBalance = await debit(userId, betAmount);
 
@@ -171,12 +203,14 @@ const slotHandler = async (ctx) => {
     lastSpinTime.set(userId, Date.now());
 
     const _usd = (cents) => `$${(cents / 100).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    const mention = `<a href="tg://user?id=${userId}">${escapeHtml(ctx.from.first_name || "User")}</a>`;
     const getDesign = (s1, s2, s3, bet = 0, win = 0, profit = 0, status = "") => {
       const resultStatus = win > 0 ? "Win ✅" : "Lose ❌";
       const resultLine = win > 0
         ? `Win - ${_usd(win)} [${status}]`
         : `Lose - ${_usd(bet)}`;
       return `🎰 GUESS SLOT V2.0
+User - ${mention}
 ✦ ━━━━━━━━━━━ ✦
 
 ┏━━━━━━━━━━━┓
@@ -192,76 +226,20 @@ ${resultLine}
 ✦ ━━━━━━━━━━━ ✦`;
     };
 
-    const slots = ["🍒", "🍎", "🍉", "🍊", "🍋", "🍇", "🍓", "🥝", "🔔", "⭐"];
-    const SEVEN = "7️⃣";
-    const makeLoseSymbols = () => {
-      const shuffled = [...slots].sort(() => 0.5 - Math.random());
-      return shuffled.slice(0, 3);
-    };
-
-    // ─── Determine outcome via WLJ ─────────────────────────────────────────
+    // Telegram's returned 🎰 value is the source of truth for both the result
+    // shown to the user and the payout multiplier.
+    const diceValue = Number(waitMsg.dice?.value);
+    if (!Number.isInteger(diceValue) || diceValue < 1 || diceValue > 64) {
+      throw new Error("Telegram slot result value is missing or invalid");
+    }
+    const telegramResult = getTelegramSlotResult(diceValue);
+    const [result1, result2, result3] = telegramResult.symbols;
+    const winMultiplier = telegramResult.multiplier;
+    const status = telegramResult.status;
+    const outcome = winMultiplier > 0 ? "W" : "L";
     const poolBalance = await getPoolBalance();
-    // Keep the existing WLJ algorithm but apply the persisted owner base win rate.
-    global.slotWin = ownerSettings.winRate;
-    const wlj    = getWLJ(userId, poolBalance);
-    let random = Math.random() * 100;
 
-    let result1, result2, result3;
-    let winMultiplier = 0;
-    let status        = "Lose";
-    let outcome       = "L";
-
-
-    if (random < wlj.J) {
-      // ── JACKPOT: 777 → 5x ─────────────────────────────────────────────────
-      result1 = result2 = result3 = SEVEN;
-      winMultiplier = MULTI_JACKPOT;
-      status = `${MULTI_JACKPOT}X`;
-      outcome = "W";
-
-    } else if (random < wlj.J + wlj.W) {
-      // ── WIN: determine whether the emoji result is 3-kind or 2-kind ──────
-      const winRoll = Math.random() * 100;
-      outcome = "W";
-
-      if (winRoll < 40) {
-        const sym = slots[Math.floor(Math.random() * slots.length)];
-        result1 = result2 = result3 = sym;
-        winMultiplier = MULTI_3KIND;
-        status = `${MULTI_3KIND}X`;
-      } else {
-        const sym = slots[Math.floor(Math.random() * slots.length)];
-        result1 = result2 = sym;
-        let other;
-        do { other = slots[Math.floor(Math.random() * slots.length)]; } while (other === sym);
-        result3 = other;
-        winMultiplier = MULTI_2KIND;
-        status = `${MULTI_2KIND}X`;
-      }
-
-    } else {
-      // ── LOSE: three different emoji symbols ───────────────────────────────
-      [result1, result2, result3] = makeLoseSymbols();
-      winMultiplier = 0;
-      status = "Lose";
-      outcome = "L";
-    }
-
-    // Protect the reserve at settlement: a non-owner win may not lower the pool below $5,000.
-    const potentialWinAmount = betAmount * winMultiplier;
-    const potentialProfit = potentialWinAmount - betAmount;
-    const reserveBreach = !isOwner(ctx) && (
-      poolBalance < POOL_SAFETY_THRESHOLD ||
-      (potentialProfit > 0 && poolBalance - potentialProfit < POOL_SAFETY_THRESHOLD)
-    );
-    if (reserveBreach && outcome === "W") {
-      [result1, result2, result3] = makeLoseSymbols();
-      winMultiplier = 0;
-      status = "Lose ❌";
-      outcome = "L";
-    }
-
-    // ─── Record outcome for next spin's WLJ adjustment ─────────────────────
+    // Keep the existing history tracking for /wlj statistics.
     recordResult(userId, outcome, poolBalance);
 
     // ─── Settle balance ────────────────────────────────────────────────────
@@ -284,14 +262,16 @@ ${resultLine}
     }
     settled = true;
 
-    // Show the final result immediately after settlement; no artificial delay.
+    // Keep the animated 🎰 message intact and send the result as its reply.
     try {
-      await ctx.telegram.editMessageText(
+      await ctx.telegram.sendMessage(
         ctx.chat.id,
-        waitMsg.message_id,
-        null,
-        getDesign(result1, result2, result3, betAmount, winAmount, profit, status)
-      ).catch(err => logger.error("Edit result error: " + err.message));
+        getDesign(result1, result2, result3, betAmount, winAmount, profit, status),
+        {
+          parse_mode: "HTML",
+          reply_to_message_id: waitMsg.message_id,
+        },
+      );
     } finally {
       activeSpins.delete(userId);
     }

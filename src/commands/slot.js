@@ -204,22 +204,16 @@ const slotHandler = async (ctx) => {
 
     const _usd = (cents) => `$${(cents / 100).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
     const mention = `<a href="tg://user?id=${userId}">${escapeHtml(ctx.from.first_name || "User")}</a>`;
-    const getDesign = (s1, s2, s3, bet = 0, win = 0, profit = 0, status = "") => {
+    const getDesign = (bet = 0, win = 0, profit = 0, status = "") => {
       const resultStatus = win > 0 ? "Win ✅" : "Lose ❌";
       const resultLine = win > 0
-        ? `Win - ${_usd(win)} [${status}]`
-        : `Lose - ${_usd(bet)}`;
+        ? `🎰Win - ${_usd(win)} [${status}]`
+        : `🎰Lose - ${_usd(bet)}`;
       return `🎰 GUESS SLOT V2.0
 User - ${mention}
-✦ ━━━━━━━━━━━ ✦
 
-┏━━━━━━━━━━━┓
-┃ ${s1} | ${s2} | ${s3} ┃
-┗━━━━━━━━━━━┛
-
-✦ ━━━━━━━━━━━ ✦
 🎰 SLOT DETAILS
-✦ ━━━━━━━━━━━ ✦
+
 💵 Bet     : ${_usd(bet)}
 ${resultLine}
 📊 Profit  : ${_usd(profit)} [${resultStatus}]
@@ -266,7 +260,7 @@ ${resultLine}
     try {
       await ctx.telegram.sendMessage(
         ctx.chat.id,
-        getDesign(result1, result2, result3, betAmount, winAmount, profit, status),
+        getDesign(betAmount, winAmount, profit, status),
         {
           parse_mode: "HTML",
           reply_to_message_id: waitMsg.message_id,

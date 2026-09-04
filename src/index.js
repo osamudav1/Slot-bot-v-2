@@ -130,6 +130,15 @@ const setBotCommands = async (bot) => {
 const main = async () => {
   dotenv.config();
 
+  // Render and the project documentation use TELEGRAM_BOT_TOKEN. Keep
+  // BOT_TOKEN as a backwards-compatible fallback for older deployments.
+  const botToken = String(process.env.TELEGRAM_BOT_TOKEN || process.env.BOT_TOKEN || "").trim();
+  if (!botToken) {
+    throw new Error(
+      "Telegram bot token is missing. Set TELEGRAM_BOT_TOKEN in the deployment environment."
+    );
+  }
+
   process.on("unhandledRejection", (error) => {
     logger.error(`Unhandled promise rejection: ${error?.stack || error}`);
   });
@@ -175,7 +184,7 @@ const main = async () => {
     // A process restart must never restore stale or free Slot Wallet balances.
     await clearAll();
     logger.info("Slot Wallet cleared on bot startup");
-    const bot = new Telegraf(process.env.TELEGRAM_BOT_TOKEN);
+    const bot = new Telegraf(botToken);
 
     bot.catch((error) => {
       logger.error(`Telegram update error: ${error.message}`);

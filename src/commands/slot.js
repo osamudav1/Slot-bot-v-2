@@ -59,8 +59,8 @@ const MULTI_JACKPOT  = 8;    // 777 → 8x
 const userHistory = new Map(); // userId → ['W','L','W',...]
 const recoveryState = new Map(); // userId → { attempts: number, exhausted: boolean }
 const HISTORY_SIZE = 5;
-const SLOT_MIN_BET = 5000; // $50.00
-const SLOT_MAX_BET = 20000; // $200.00
+const SLOT_MIN_BET = 500; // $5.00
+const SLOT_MAX_BET = 10000; // $100.00
 const SLOT_SYMBOLS = ["🍒", "🍋", "🔔", "⭐"];
 const escapeHtml = (value) => String(value ?? "")
   .replace(/&/g, "&amp;")
@@ -178,7 +178,7 @@ const slotHandler = async (ctx) => {
     betAmount = args[1] ? Math.floor(parseFloat(args[1]) * 100) : 0;
 
     if (isNaN(betAmount) || betAmount <= 0) {
-      return ctx.reply("Usage: /slot <amount_in_dollars>\nAllowed range: $50 - $200\nExample: /slot 50");
+      return ctx.reply("Usage: /slot <amount_in_dollars>\nAllowed range: $5 - $100\nExample: /slot 5");
     }
     if (betAmount < SLOT_MIN_BET) {
       return ctx.reply(`🔴 အနည်းဆုံး ${(SLOT_MIN_BET / 100).toFixed(2)} $ လောင်းရပါမည်။`);

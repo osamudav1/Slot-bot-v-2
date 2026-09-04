@@ -3,7 +3,7 @@ const path = require("path");
 const User = require("../database/entity/user.entitiy");
 const LEGACY_WALLET_FILE = path.join(__dirname, "../../slot_wallet.json");
 const LEGACY_MIGRATION_ID = "slot-wallet-mongodb-v1";
-const DAILY_SPIN_LIMIT = 50;
+const DAILY_SPIN_LIMIT = 35;
 const MYANMAR_TIME_ZONE = "Asia/Yangon";
 const getMyanmarDateKey = (date = new Date()) => new Intl.DateTimeFormat("en-CA", {
   timeZone: MYANMAR_TIME_ZONE,

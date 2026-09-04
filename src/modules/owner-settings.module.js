@@ -11,8 +11,8 @@ const KEYS = {
 
 const DEFAULTS = {
   winRate: 37,
-  minBet: 500,
-  maxBet: 25000,
+  minBet: 5000,
+  maxBet: 20000,
   cooldown: 8000,
   pauseSlot: false,
   pauseShan: false,

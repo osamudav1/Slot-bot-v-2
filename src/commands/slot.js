@@ -52,6 +52,8 @@ const MULTI_JACKPOT  = 8;    // 777 → 8x
 const userHistory = new Map(); // userId → ['W','L','W',...]
 const recoveryState = new Map(); // userId → { attempts: number, exhausted: boolean }
 const HISTORY_SIZE = 5;
+const SLOT_MIN_BET = 5000; // $50.00
+const SLOT_MAX_BET = 20000; // $200.00
 const SLOT_SYMBOLS = ["🍒", "🍋", "🔔", "⭐"];
 const escapeHtml = (value) => String(value ?? "")
   .replace(/&/g, "&amp;")
@@ -150,7 +152,7 @@ const slotHandler = async (ctx) => {
       ownerSettings = await getOwnerSettings();
     } catch (settingsError) {
       logger.error(`Slot settings error: ${settingsError.message}`);
-      ownerSettings = { winRate: DEFAULT_WIN, minBet: 500, maxBet: 25000, cooldown: 8000, pauseSlot: false };
+      ownerSettings = { winRate: DEFAULT_WIN, minBet: SLOT_MIN_BET, maxBet: SLOT_MAX_BET, cooldown: 8000, pauseSlot: false };
     }
     if (ownerSettings.pauseSlot && !isOwner(ctx)) {
       return ctx.reply("🛠 Slot game is temporarily paused by owner.").catch(() => {});
@@ -168,13 +170,13 @@ const slotHandler = async (ctx) => {
     betAmount = args[1] ? Math.floor(parseFloat(args[1]) * 100) : 0;
 
     if (isNaN(betAmount) || betAmount <= 0) {
-      return ctx.reply("Usage: /slot <amount_in_dollars>\nExample: /slot 1.5");
+      return ctx.reply("Usage: /slot <amount_in_dollars>\nAllowed range: $50 - $200\nExample: /slot 50");
     }
-    if (betAmount < ownerSettings.minBet) {
-      return ctx.reply(`🔴 အနည်းဆုံး ${(ownerSettings.minBet / 100).toFixed(2)} $ လောင်းရပါမည်။`);
+    if (betAmount < SLOT_MIN_BET) {
+      return ctx.reply(`🔴 အနည်းဆုံး ${(SLOT_MIN_BET / 100).toFixed(2)} $ လောင်းရပါမည်။`);
     }
-    if (betAmount > ownerSettings.maxBet) {
-      return ctx.reply(`🔴 အများဆုံး ${(ownerSettings.maxBet / 100).toFixed(2)} $ ထိသာ လောင်းနိုင်ပါသည်။`);
+    if (betAmount > SLOT_MAX_BET) {
+      return ctx.reply(`🔴 အများဆုံး ${(SLOT_MAX_BET / 100).toFixed(2)} $ ထိသာ လောင်းနိုင်ပါသည်။`);
     }
 
     // Reserve this user before any async work so duplicate spins cannot overlap.

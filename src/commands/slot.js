@@ -46,7 +46,7 @@ const getCfg = () => ({
 // Payout multipliers
 const MULTI_2KIND    = 2;    // 2-of-a-kind → 2x
 const MULTI_3KIND    = 3;    // 3-of-a-kind → 3x
-const MULTI_JACKPOT  = 5;    // 777 → 5x
+const MULTI_JACKPOT  = 8;    // 777 → 8x
 
 // Per-user history (in-memory, last 5 spins)
 const userHistory = new Map(); // userId → ['W','L','W',...]

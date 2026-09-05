@@ -53,6 +53,8 @@ const getCfg = () => ({
 
 // Only these Telegram 🎰 roll values pay out. Every other value loses.
 const ROLL_PAYOUTS = Object.freeze({
+  // Telegram native 🎰 shows BAR BAR BAR at value 1.
+  1: 3,
   2: 1.5,
   6: 2,
   22: 2,
@@ -69,6 +71,7 @@ const SLOT_MIN_BET = 500; // $5.00
 const SLOT_MAX_BET = 10000; // $100.00
 const SLOT_SYMBOLS = ["🫐", "🍋", "BAR", "7️⃣"];
 const ROLL_SYMBOLS = Object.freeze({
+  1: ["BAR", "BAR", "BAR"],
   2: ["🫐", "🍋", "🍋"],
   6: ["🫐", "🫐", "🍋"],
   7: ["🍋", "BAR", "🍋"],
@@ -420,6 +423,7 @@ const wljHandler = async (ctx) => {
     `   2+ consec. Win  → -${cfg.reduce}% Win (floor ${cfg.minWin}%)`,
     ``,
     `🏆 Payouts`,
+    `   Roll 1      : ${ROLL_PAYOUTS[1]}x (BAR BAR BAR)`,
     `   Roll 2      : ${ROLL_PAYOUTS[2]}x`,
     `   Roll 6      : ${ROLL_PAYOUTS[6]}x`,
     `   Roll 22     : ${ROLL_PAYOUTS[22]}x`,

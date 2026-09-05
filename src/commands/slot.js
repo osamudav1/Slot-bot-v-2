@@ -55,7 +55,7 @@ const getCfg = () => ({
 const ROLL_PAYOUTS = Object.freeze({
   2: 1.5,
   6: 2,
-  22: 3,
+  22: 2,
   43: 3,
   64: 8,
 });
@@ -67,7 +67,15 @@ const recoveryState = new Map(); // userId → { attempts: number, exhausted: bo
 const HISTORY_SIZE = 5;
 const SLOT_MIN_BET = 500; // $5.00
 const SLOT_MAX_BET = 10000; // $100.00
-const SLOT_SYMBOLS = ["🍒", "🍋", "🔔", "⭐"];
+const SLOT_SYMBOLS = ["🫐", "🍋", "BAR", "7️⃣"];
+const ROLL_SYMBOLS = Object.freeze({
+  2: ["🫐", "🍋", "🍋"],
+  6: ["🫐", "🫐", "🍋"],
+  7: ["🍋", "BAR", "🍋"],
+  22: ["🍋", "🍋", "🍋"],
+  43: ["BAR", "BAR", "BAR"],
+  64: ["7️⃣", "7️⃣", "7️⃣"],
+});
 const escapeHtml = (value) => String(value ?? "")
   .replace(/&/g, "&amp;")
   .replace(/</g, "&lt;")
@@ -82,7 +90,7 @@ const getTelegramSlotResult = (value) => {
   }
 
   const map = [1, 2, 3, 0];
-  const symbols = [0, 2, 4].map((shift) => SLOT_SYMBOLS[map[(numericValue - 1 >> shift) & 3]]);
+  const symbols = ROLL_SYMBOLS[numericValue] || [0, 2, 4].map((shift) => SLOT_SYMBOLS[map[(numericValue - 1 >> shift) & 3]]);
   const multiplier = ROLL_PAYOUTS[numericValue] || 0;
   return {
     symbols,

@@ -5,8 +5,15 @@ const { getOwnerSettings } = require("../modules/owner-settings.module");
 const { isOwner } = require("../modules/owner.module");
 const logger = require("../logger");
 
-const DARTS_BULLSEYE_MULTIPLIER = 2.5;
-const DARTS_RING_MULTIPLIER = 0.5;
+const DARTS_PAYOUTS = Object.freeze({
+  1: 0.2,
+  2: 0.2,
+  3: 0.2,
+  4: 0.5,
+  5: 1.5,
+  6: 2.5,
+});
+const DARTS_BULLSEYE_MULTIPLIER = DARTS_PAYOUTS[6];
 const DARTS_EMOJI = "🎯";
 
 const formatMoney = (cents) => `$${(Number(cents || 0) / 100).toFixed(2)}`;
@@ -55,17 +62,11 @@ const dartsHandler = async (ctx) => {
       throw new Error(`Invalid Telegram darts result: ${result}`);
     }
 
-    const isBullseye = result === 6;
-    const isRingHit = result >= 2 && result <= 5;
-    const multiplier = isBullseye
-      ? DARTS_BULLSEYE_MULTIPLIER
-      : isRingHit
-        ? DARTS_RING_MULTIPLIER
-        : 0;
+    const multiplier = DARTS_PAYOUTS[result] || 0;
     const payout = Math.floor(betAmount * multiplier);
     if (payout > 0) await credit(userId, payout);
 
-    const status = isBullseye ? "Bullseye" : isRingHit ? "Ring" : "Miss";
+    const status = result === 6 ? "Bullseye" : `Ring ${result}`;
     return ctx.telegram.sendMessage(ctx.chat.id,
       `🎯 DARTS RESULT\n\n` +
       `Bet - ${formatMoney(betAmount)}\n\n` +
@@ -92,5 +93,5 @@ composer.command("darts", dartsHandler);
 
 module.exports = composer;
 module.exports.DARTS_BULLSEYE_MULTIPLIER = DARTS_BULLSEYE_MULTIPLIER;
-module.exports.DARTS_RING_MULTIPLIER = DARTS_RING_MULTIPLIER;
+module.exports.DARTS_PAYOUTS = DARTS_PAYOUTS;
 module.exports.dartsHandler = dartsHandler;

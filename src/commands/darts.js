@@ -6,9 +6,9 @@ const { isOwner } = require("../modules/owner.module");
 const logger = require("../logger");
 
 const DARTS_PAYOUTS = Object.freeze({
-  1: 0.2,
-  2: 0.2,
-  3: 0.2,
+  1: 0,
+  2: 0,
+  3: 0,
   4: 0.5,
   5: 1.5,
   6: 2.5,

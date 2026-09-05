@@ -12,6 +12,42 @@ const getMyanmarDateKey = (date = new Date()) => new Intl.DateTimeFormat("en-CA"
   day: "2-digit",
 }).format(date);
 
+const getTimeUntilDailyReset = (date = new Date()) => {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: MYANMAR_TIME_ZONE,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).formatToParts(date).reduce((result, part) => {
+    if (part.type !== "literal") result[part.type] = part.value;
+    return result;
+  }, {});
+  const nextDay = new Date(Date.UTC(
+    Number(parts.year),
+    Number(parts.month) - 1,
+    Number(parts.day) + 1,
+    0,
+    0,
+    0,
+  ) - (6 * 60 + 30) * 60 * 1000);
+  const remainingMinutes = Math.max(0, Math.ceil((nextDay.getTime() - date.getTime()) / 60000));
+  return {
+    hours: Math.floor(remainingMinutes / 60),
+    minutes: remainingMinutes % 60,
+  };
+};
+
+const resetAllDailySpins = async () => {
+  const today = getMyanmarDateKey();
+  const result = await User.updateMany({}, {
+    $set: {
+      slot_spin_day: today,
+      slot_spin_count: 0,
+    },
+  });
+  return result.modifiedCount ?? result.nModified ?? 0;
+};
+
 const normalizeCents = (value) => {
   const cents = Number(value);
   return Number.isSafeInteger(cents) && cents >= 0 ? cents : 0;
@@ -150,5 +186,7 @@ module.exports = {
   reserveDailySpin,
   releaseDailySpin,
   getDailySpinCount,
+  getTimeUntilDailyReset,
+  resetAllDailySpins,
   DAILY_SPIN_LIMIT,
 };

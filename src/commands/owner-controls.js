@@ -10,7 +10,13 @@ const {
 } = require("../modules/owner-settings.module");
 
 const { isOwner } = require("../modules/owner.module");
-const { getBalance, credit, debit } = require("../modules/slot-wallet.module");
+const {
+  getBalance,
+  credit,
+  debit,
+  resetAllDailySpins,
+  DAILY_SPIN_LIMIT,
+} = require("../modules/slot-wallet.module");
 
 const composer = new Composer();
 
@@ -39,6 +45,7 @@ composer.command("ownerhelp", async (ctx) => {
     "Reply +amount / -amount — Slot wallet ပြင်ရန် (owner only)",
     "/stats — bot/game statistics",
     "/resetcontrol — owner settings reset",
+    "/dailyreset — user အားလုံး၏ daily spin ကို 0/35 ပြန်ထားရန်",
     "/reset — မသုံးရန် (Slot wallet data မဖျက်ပါ)",
     "/maintenance on|off — maintenance mode",
     "/addpool <amount$> — payout pool ထည့်ရန်",
@@ -173,6 +180,25 @@ composer.command("stats", async (ctx) => {
     `Win Rate: ${settings.winRate}%`,
     `Paused: slot=${settings.pauseSlot ? "yes" : "no"}, shan=${settings.pauseShan ? "yes" : "no"}`,
   ].join("\n"));
+});
+
+composer.command("dailyreset", async (ctx) => {
+  if (!(await ownerOnly(ctx))) return;
+  if (ctx.chat?.type !== "private") {
+    return ctx.reply("🔒 /dailyreset ကို Owner DM မှာသာ အသုံးပြုနိုင်ပါသည်။");
+  }
+
+  try {
+    const resetCount = await resetAllDailySpins();
+    return ctx.reply(
+      `✅ User အားလုံး၏ daily spin reset ပြီးပါပြီ။\n\n` +
+      `Today spin ⇢ 0/${DAILY_SPIN_LIMIT}\n` +
+      `Users reset ⇢ ${resetCount}`
+    );
+  } catch (error) {
+    logger.error(`Daily spin reset error: ${error.stack || error}`);
+    return ctx.reply("❌ Daily spin reset မအောင်မြင်ပါ။ ခဏနောက် ပြန်စမ်းပါ။");
+  }
 });
 
 composer.command("reset", async (ctx) => {

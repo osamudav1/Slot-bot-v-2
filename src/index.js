@@ -82,6 +82,7 @@ const setBotCommands = async (bot) => {
     { command: "adjust", description: "User balance ပြင်ရန်" },
     { command: "stats", description: "Bot statistics ကြည့်ရန်" },
     { command: "resetcontrol", description: "Control settings reset" },
+    { command: "dailyreset", description: "Reset daily spins for all users" },
     { command: "maintenance", description: "Maintenance mode" },
     { command: "register", description: "Group register လုပ်ရန်" },
     { command: "logs", description: "Logs ကြည့်ရန်" },

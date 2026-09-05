@@ -60,6 +60,7 @@ const setBotCommands = async (bot) => {
     { command: "pool", description: "Payout pool စစ်ရန်" },
     { command: "exchange", description: "Waifu နှင့် wallet လဲလှယ်ရန်" },
     { command: "slot", description: "Slot ဆော့ရန်" },
+    { command: "dice", description: "အံစာထိုးရန်" },
     { command: "shan", description: "ရှမ်းကိုးမီး ဆော့ရန်" },
     { command: "ranking", description: "အဆင့်စာရင်းကြည့်ရန်" },
     { command: "daily", description: "နေ့စဉ်ဆုယူရန်" },

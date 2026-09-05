@@ -59,15 +59,13 @@ const diceHandler = async (ctx) => {
     const payout = won ? Math.floor(betAmount * DICE_PAYOUT_MULTIPLIER) : 0;
     if (payout > 0) await credit(userId, payout);
 
-    const resultText = won
-      ? `🎉 အနိုင်ရပါပြီ။\nResult - ${result}\nPayout - ${formatMoney(payout)} (${DICE_PAYOUT_MULTIPLIER}x)`
-      : `😔 ရှုံးပါပြီ။\nရွေးထားသောနံပါတ် - ${chosenNumber}\nResult - ${result}\nPayout - $0.00`;
-
+    const status = won ? "Win" : "Lose";
     return ctx.telegram.sendMessage(ctx.chat.id,
       `🎲 DICE RESULT\n\n` +
-      `ရွေးထားသောနံပါတ် - ${chosenNumber}\n` +
-      `ထိုးကြေး - ${formatMoney(betAmount)}\n\n` +
-      resultText,
+      `Target - ${chosenNumber}\n` +
+      `Bet - ${formatMoney(betAmount)}\n\n` +
+      `Result - ${result}\n` +
+      `Payout - ${formatMoney(payout)} [${status}]`,
       { reply_to_message_id: diceMessage.message_id },
     );
   } catch (error) {

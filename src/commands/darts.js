@@ -6,7 +6,7 @@ const { isOwner } = require("../modules/owner.module");
 const logger = require("../logger");
 
 const DARTS_BULLSEYE_MULTIPLIER = 2.5;
-const DARTS_RING_MULTIPLIER = 0.7;
+const DARTS_RING_MULTIPLIER = 0.5;
 const DARTS_EMOJI = "🎯";
 
 const formatMoney = (cents) => `$${(Number(cents || 0) / 100).toFixed(2)}`;

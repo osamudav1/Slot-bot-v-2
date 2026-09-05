@@ -189,13 +189,17 @@ const slotHandler = async (ctx) => {
     betAmount = args[1] ? Math.floor(parseFloat(args[1]) * 100) : 0;
 
     if (isNaN(betAmount) || betAmount <= 0) {
-      return ctx.reply("Usage: /slot <amount_in_dollars>\nAllowed range: $5 - $100\nExample: /slot 5");
+      return ctx.reply(
+        `Usage: /slot <amount_in_dollars>\n` +
+        `Allowed range: $${(ownerSettings.minBet / 100).toFixed(2)} - $${(ownerSettings.maxBet / 100).toFixed(2)}\n` +
+        "Example: /slot 5"
+      );
     }
-    if (betAmount < SLOT_MIN_BET) {
-      return ctx.reply(`🔴 အနည်းဆုံး ${(SLOT_MIN_BET / 100).toFixed(2)} $ လောင်းရပါမည်။`);
+    if (betAmount < ownerSettings.minBet) {
+      return ctx.reply(`🔴 အနည်းဆုံး ${(ownerSettings.minBet / 100).toFixed(2)} $ လောင်းရပါမည်။`);
     }
-    if (betAmount > SLOT_MAX_BET) {
-      return ctx.reply(`🔴 အများဆုံး ${(SLOT_MAX_BET / 100).toFixed(2)} $ ထိသာ လောင်းနိုင်ပါသည်။`);
+    if (betAmount > ownerSettings.maxBet) {
+      return ctx.reply(`🔴 အများဆုံး ${(ownerSettings.maxBet / 100).toFixed(2)} $ ထိသာ လောင်းနိုင်ပါသည်။`);
     }
 
     // Reserve this user before any async work so duplicate spins cannot overlap.

@@ -6,6 +6,7 @@ const { isOwner } = require("../modules/owner.module");
 const logger = require("../logger");
 
 const DICE_PAYOUT_MULTIPLIER = 2.5;
+const DICE_MISS_MULTIPLIER = 0.5;
 const DICE_EMOJI = "🎲";
 
 const formatMoney = (cents) => `$${(Number(cents || 0) / 100).toFixed(2)}`;
@@ -56,7 +57,8 @@ const diceHandler = async (ctx) => {
     }
 
     const won = result === chosenNumber;
-    const payout = won ? Math.floor(betAmount * DICE_PAYOUT_MULTIPLIER) : 0;
+    const multiplier = won ? DICE_PAYOUT_MULTIPLIER : DICE_MISS_MULTIPLIER;
+    const payout = Math.floor(betAmount * multiplier);
     if (payout > 0) await credit(userId, payout);
 
     const status = won ? "Win" : "Lose";
@@ -65,7 +67,7 @@ const diceHandler = async (ctx) => {
       `Target - ${chosenNumber}\n` +
       `Bet - ${formatMoney(betAmount)}\n\n` +
       `Result - ${result}\n` +
-      `Payout - ${formatMoney(payout)} [${status}]`,
+      `Payout - ${formatMoney(payout)} [${status} ${multiplier}x]`,
       { reply_to_message_id: diceMessage.message_id },
     );
   } catch (error) {
@@ -88,4 +90,5 @@ composer.command("dice", diceHandler);
 module.exports = composer;
 
 module.exports.DICE_PAYOUT_MULTIPLIER = DICE_PAYOUT_MULTIPLIER;
+module.exports.DICE_MISS_MULTIPLIER = DICE_MISS_MULTIPLIER;
 module.exports.diceHandler = diceHandler;

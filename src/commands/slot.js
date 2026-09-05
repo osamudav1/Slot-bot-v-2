@@ -8,7 +8,7 @@ const {
   reserveDailySpin,
   releaseDailySpin,
   getTimeUntilDailyReset,
-  DAILY_SPIN_LIMIT,
+  getDailySpinLimit,
 } = require("../modules/slot-wallet.module");
 const logger = require("../logger");
 const { getPoolBalance, addToPool, subtractFromPool } = require("../modules/pool.module");
@@ -203,9 +203,12 @@ const slotHandler = async (ctx) => {
     const dailySpinCount = await reserveDailySpin(userId);
     if (dailySpinCount === null) {
       activeSpins.delete(userId);
-      const { hours, minutes } = getTimeUntilDailyReset();
+      const [dailySpinLimit, { hours, minutes }] = await Promise.all([
+        getDailySpinLimit(),
+        Promise.resolve(getTimeUntilDailyReset()),
+      ]);
       return ctx.reply(
-        `⛔ ဒီနေ့ spin အကြိမ် ${DAILY_SPIN_LIMIT} ပြည့်သွားပါပြီ။ မနက်ဖြန်မှ ပြန်လှည့်နိုင်ပါမယ်။\n\nTime - ${hours} hours ${minutes} minutes`
+        `⛔ ဒီနေ့ spin အကြိမ် ${dailySpinLimit} ပြည့်သွားပါပြီ။ မနက်ဖြန်မှ ပြန်လှည့်နိုင်ပါမယ်။\n\nTime - ${hours} hours ${minutes} minutes`
       ).catch(() => {});
     }
     dailySpinReserved = true;

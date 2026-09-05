@@ -4,7 +4,7 @@ const { getCommandName } = require("../lang/index");
 const {
   getBalance,
   getDailySpinCount,
-  DAILY_SPIN_LIMIT,
+  getDailySpinLimit,
 } = require("../modules/slot-wallet.module");
 
 const getBadge = (balance) => {
@@ -24,6 +24,7 @@ const walletHandler = async (ctx) => {
   await getUser({ id: ctx.from.id, firstName: ctx.from.first_name });
   const balance = await getBalance(ctx.from.id);
   const todaySpinCount = await getDailySpinCount(ctx.from.id);
+  const dailySpinLimit = await getDailySpinLimit();
   const badge = getBadge(balance);
   const firstName = ctx.from.first_name;
   const formatBalance = (amount) => (amount / 100).toLocaleString(undefined, {
@@ -32,7 +33,7 @@ const walletHandler = async (ctx) => {
   });
   const response = `🏦『 ${firstName} ᴡᴀʟʟᴇᴛ 』\n` +
     `🎰 Balance ⇢ $${formatBalance(balance)}\n` +
-    `🎲 Today spin ⇢ ${todaySpinCount}/${DAILY_SPIN_LIMIT}\n` +
+    `🎲 Today spin ⇢ ${todaySpinCount}/${dailySpinLimit}\n` +
     `💎 Rank ⇢ ${badge}`;
   try {
     const photos = await ctx.telegram.getUserProfilePhotos(ctx.from.id, 0, 1);

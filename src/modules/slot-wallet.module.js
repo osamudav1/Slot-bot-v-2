@@ -1,9 +1,10 @@
 const fs = require("fs");
 const path = require("path");
 const User = require("../database/entity/user.entitiy");
+const { getOwnerSettings } = require("./owner-settings.module");
 const LEGACY_WALLET_FILE = path.join(__dirname, "../../slot_wallet.json");
 const LEGACY_MIGRATION_ID = "slot-wallet-mongodb-v1";
-const DAILY_SPIN_LIMIT = 35;
+const DEFAULT_DAILY_SPIN_LIMIT = 35;
 const MYANMAR_TIME_ZONE = "Asia/Yangon";
 const getMyanmarDateKey = (date = new Date()) => new Intl.DateTimeFormat("en-CA", {
   timeZone: MYANMAR_TIME_ZONE,
@@ -53,14 +54,26 @@ const normalizeCents = (value) => {
   return Number.isSafeInteger(cents) && cents >= 0 ? cents : 0;
 };
 
+const getDailySpinLimit = async () => {
+  try {
+    const settings = await getOwnerSettings();
+    return Number.isSafeInteger(settings.dailySpinLimit) && settings.dailySpinLimit >= 1
+      ? settings.dailySpinLimit
+      : DEFAULT_DAILY_SPIN_LIMIT;
+  } catch (error) {
+    return DEFAULT_DAILY_SPIN_LIMIT;
+  }
+};
+
 const reserveDailySpin = async (userId) => {
   const today = getMyanmarDateKey();
+  const dailySpinLimit = await getDailySpinLimit();
   const updated = await User.findOneAndUpdate(
     {
       id: Number(userId),
       $or: [
         { slot_spin_day: { $ne: today } },
-        { slot_spin_count: { $lt: DAILY_SPIN_LIMIT } },
+        { slot_spin_count: { $lt: dailySpinLimit } },
       ],
     },
     [
@@ -188,5 +201,6 @@ module.exports = {
   getDailySpinCount,
   getTimeUntilDailyReset,
   resetAllDailySpins,
-  DAILY_SPIN_LIMIT,
+  DEFAULT_DAILY_SPIN_LIMIT,
+  getDailySpinLimit,
 };

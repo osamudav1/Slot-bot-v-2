@@ -7,6 +7,7 @@ const KEYS = {
   cooldown: "owner_game_cooldown_ms",
   pauseSlot: "owner_pause_slot",
   pauseShan: "owner_pause_shan",
+  dailySpinLimit: "owner_daily_spin_limit",
 };
 
 const DEFAULTS = {
@@ -16,6 +17,7 @@ const DEFAULTS = {
   cooldown: 8000,
   pauseSlot: false,
   pauseShan: false,
+  dailySpinLimit: 35,
 };
 
 let cache = null;
@@ -23,6 +25,12 @@ let loading = null;
 
 const normalize = (key, value) => {
   if (key === "pauseSlot" || key === "pauseShan") return Boolean(value);
+  if (key === "dailySpinLimit") {
+    const number = Math.floor(Number(value));
+    return Number.isSafeInteger(number) && number >= 1 && number <= 1000
+      ? number
+      : DEFAULTS.dailySpinLimit;
+  }
   const number = Number(value);
   return Number.isFinite(number) ? number : DEFAULTS[key];
 };

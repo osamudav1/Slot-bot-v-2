@@ -51,10 +51,15 @@ const getCfg = () => ({
   minWin:   global.slotMinWin   ?? DEFAULT_MIN_WIN,
 });
 
-// Payout multipliers
-const MULTI_2KIND    = 2;    // 2-of-a-kind → 2x
-const MULTI_3KIND    = 3;    // 3-of-a-kind → 3x
-const MULTI_JACKPOT  = 8;    // 777 → 8x
+// Only these Telegram 🎰 roll values pay out. Every other value loses.
+const ROLL_PAYOUTS = Object.freeze({
+  2: 1.5,
+  6: 2,
+  22: 3,
+  43: 3,
+  64: 8,
+});
+const MULTI_JACKPOT = ROLL_PAYOUTS[64];
 
 // Per-user history (in-memory, last 5 spins)
 const userHistory = new Map(); // userId → ['W','L','W',...]
@@ -78,13 +83,7 @@ const getTelegramSlotResult = (value) => {
 
   const map = [1, 2, 3, 0];
   const symbols = [0, 2, 4].map((shift) => SLOT_SYMBOLS[map[(numericValue - 1 >> shift) & 3]]);
-  const counts = symbols.reduce((result, symbol) => {
-    result[symbol] = (result[symbol] || 0) + 1;
-    return result;
-  }, {});
-  const highestCount = Math.max(...Object.values(counts));
-  // No matching reels means a full loss: no payout and the bet remains lost.
-  const multiplier = highestCount === 3 ? MULTI_3KIND : highestCount === 2 ? MULTI_2KIND : 0;
+  const multiplier = ROLL_PAYOUTS[numericValue] || 0;
   return {
     symbols,
     multiplier,
@@ -413,9 +412,13 @@ const wljHandler = async (ctx) => {
     `   2+ consec. Win  → -${cfg.reduce}% Win (floor ${cfg.minWin}%)`,
     ``,
     `🏆 Payouts`,
-    `   2-of-a-kind : ${MULTI_2KIND}x`,
-    `   3-of-a-kind : ${MULTI_3KIND}x`,
-    `   777         : ${MULTI_JACKPOT}x`,
+    `   Roll 2      : ${ROLL_PAYOUTS[2]}x`,
+    `   Roll 6      : ${ROLL_PAYOUTS[6]}x`,
+    `   Roll 22     : ${ROLL_PAYOUTS[22]}x`,
+    `   Roll 43     : ${ROLL_PAYOUTS[43]}x`,
+    `   Roll 64     : ${ROLL_PAYOUTS[64]}x Jackpot`,
+    "   Other rolls : Lose",
+
     ``,
     `👥 Tracked users: ${userHistory.size}`,
     ``,
